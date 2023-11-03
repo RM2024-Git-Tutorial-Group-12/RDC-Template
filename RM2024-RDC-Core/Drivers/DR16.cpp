@@ -21,16 +21,61 @@ const RcData *getRcData() { return &rcData; }
 
 /*================================================================================*/
 /*You are free to declare your buffer, or implement your own function(callback, decoding) here*/
+HAL_Ticks curTime = HAL_GetTick();
+HAL_Ticks prevTime = 0;
 
+uint8_t rxBuffer[18] = {0};
+bool abnormal = false;
 
+void CallBackFunc(UART_HandleTypeDef* huart, uint16_t s){
+    decodeAndValidate(rxBuffer);
+    HAL_UARTEx_ReceiveToIdle_IT(&huart1,rxBuffer,18);
+}
 
+void errorHandler(){
+    // resetting the values to normal
+    rcData.channel0 = 1024;
+    rcData.channel1 = 1024;
+    rcData.channel2 = 1024;
+    rcData.channel3 = 1024;
+    // switch no normal state
+}
 
+void decodeAndValidate(uint8_t rxBuffer[]){
+    abnormal = false;
+    if (rxBuffer == NULL){return;}
 
+    if(rxBuffer == NULL){return;}
+    rcData.channel0 = ((uint16_t)rxBuffer[0] | ((uint16_t)rxBuffer[1] << 8)) & 0x07FF;
+    if (rcData.channel0 < 364 || rcData.channel0 > 1684){abnormal = true;}
+
+    rcData.channel1 = (((uint16_t)rxBuffer[1] >> 3) | ((uint16_t)rxBuffer[2] << 5))& 0x07FF;
+    if (rcData.channel1 < 364 || rcData.channel1 > 1684){abnormal = true;}
+
+    rcData.channel2 = (((uint16_t)rxBuffer[2] >> 6) | ((uint16_t)rxBuffer[3] << 2) | ((uint16_t)rxBuffer[4] << 10)) & 0x07FF;
+    if (rcData.channel2 < 364 || rcData.channel2 > 1684){abnormal = true;}
+
+    rcData.channel3 = (((uint16_t)rxBuffer[4] >> 1) | ((uint16_t)rxBuffer[5]<<7)) & 0x07FF;
+    if (rcData.channel3 < 364 || rcData.channel3 > 1684){abnormal = true;}
+
+    rcData.s1 = ((rxBuffer[5] >> 4) & 0x000C) >> 2;
+    if(rcData.s1 < 1 || rcData.s1 > 3){abnormal = true;}
+
+    rcData.s2 = ((rxBuffer[5] >> 4) & 0x0003);
+    if(rcData.s2 < 1 || rcData.s2 > 3){abnormal = true;}
+
+    if (abnormal){errorHandler();}
+    curTime = HAL_GetTick();
+    prevTime = curTime;
+}
 
 /*================================================================================*/
 void init()
 {
-    /*If you would like to, please implement your function definition here*/
+    if (!HAL_UART_RegisterRxEventCallback(&huart1,CallBackFunc)){
+        HAL_UARTEx_ReceiveToIdle_IT(&huart1,rxBuffer,18);
+    }
+    
 }
 
 }  // namespace DR16

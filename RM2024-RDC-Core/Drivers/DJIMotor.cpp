@@ -10,7 +10,7 @@ namespace DJIMotor
 {
 
 // Initialize motor's controller instance
-DJIMotor motors[8];
+DJIMotor* motors[8];
 
 /*========================================================*/
 // Your implementation of the function, or even your customized function, should
@@ -19,12 +19,15 @@ DJIMotor motors[8];
 /**
  * @todo
  */
-void init() {}
-
+DJIMotor::DJIMotor(const int& i){
+    this->canID=0x200+i;
+}
 /**
  * @todo
  */
-float getEncoder(uint16_t canID) { return 0.0f; }
+float DJIMotor::getEncoder(uint16_t canID){
+    return 0.0f;
+}
 
 /**
  * @todo

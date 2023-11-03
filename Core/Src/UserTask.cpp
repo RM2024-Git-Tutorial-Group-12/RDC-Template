@@ -17,25 +17,36 @@
 #include "task.h"  // Include task
 
 /*Allocate the stack for our PID task*/
-StackType_t uxPIDTaskStack[configMINIMAL_STACK_SIZE];
+StackType_t DR16TaskStack[configMINIMAL_STACK_SIZE];
+StackType_t testTaskStack[configMINIMAL_STACK_SIZE];
 /*Declare the PCB for our PID task*/
-StaticTask_t xPIDTaskTCB;
+StaticTask_t DR16TaskTCB;
+StaticTask_t testTaskTCB;
 
 /**
  * @todo Show your control outcome of the M3508 motor as follows
  */
-void userTask(void *)
+bool connected = true;
+void DR16Communication(void *)
 {
     /* Your user layer codes begin here*/
     /*=================================================*/
-
+    
     /* Your user layer codes end here*/
     /*=================================================*/
     while (true)
     {
         /* Your user layer codes in loop begin here*/
         /*=================================================*/
-
+        DR16::curTime = HAL_GetTick();
+        // Intialize the DR16 driver
+        if (DR16::curTime - DR16::prevTime > 25){
+            connected = false;
+            DR16::errorHandler();
+        }
+        else{
+            connected = true;
+        }
         /* Your user layer codes in loop end here*/
         /*=================================================*/
 
@@ -47,12 +58,16 @@ void userTask(void *)
  * @todo In case you like it, please implement your own tasks
  */
 
-
-
-
-
-
-
+void test(void *){
+    int x = 0;
+    while (true)
+    {
+        x+=1;
+        vTaskDelay(1);
+    }
+    
+    
+}
 
 /**
  * @brief Intialize all the drivers and add task to the scheduler
@@ -60,16 +75,21 @@ void userTask(void *)
 */
 void startUserTasks()
 {
-    DJIMotor::init();  // Initalize the DJIMotor driver
-    DR16::init();      // Intialize the DR16 driver
-
-    xTaskCreateStatic(userTask,
-                      "user_default ",
+    DR16::init();
+    xTaskCreateStatic(DR16Communication,
+                      "DR16_Communication ",
                       configMINIMAL_STACK_SIZE,
                       NULL,
                       1,
-                      uxPIDTaskStack,
-                      &xPIDTaskTCB);  // Add the main task into the scheduler
+                      DR16TaskStack,
+                      &DR16TaskTCB);  // Add the main task into the scheduler
+    xTaskCreateStatic(test,
+                      "test ",
+                      configMINIMAL_STACK_SIZE,
+                      NULL,
+                      2,
+                      testTaskStack,
+                      &testTaskTCB); 
     /**
      * @todo Add your own task here
     */
