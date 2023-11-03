@@ -21,6 +21,7 @@
 #endif
 
 #include "main.h"
+#include "stdint.h"
 
 namespace DJIMotor
 {
@@ -36,16 +37,26 @@ namespace DJIMotor
  * @brief Instead of copy and paste your codes for four times
  * @brief This is what we really appreiciate in our programming
  */
-struct DJIMotor
+class DJIMotor
 {
-    uint16_t canID;  // You need to assign motor's can ID for different motor
+    private:
+        uint16_t canID;  // You need to assign motor's can ID for different motor
                      // instance
+        uint16_t rotation;
+        uint16_t speed;
+        uint16_t current;
+        uint16_t temp;
+    public:
+        DJIMotor(const int& i);
+        float getEncoder(uint16_t canID);
+        float getRPM(uint16_t canID);
     /*======================================================*/
     /**
      * @brief Your self-defined variables are defined here
      * @note  Please refer to the GM6020, M3508 motor's user manual that we have
      * released on the Google Drive
      * @example:
+     
      * uint16_t encoder;
      * uint16_t rpm;
      * float orientation; //  get the accumulated orientation of the motor

@@ -15,7 +15,9 @@
 
 /*Inlcude the main.h files, where you could access the huart1 handle*/
 #include "main.h"
+#include "stdint.h"
 
+typedef unsigned int HAL_Ticks;
 namespace DR16
 {
 
@@ -26,8 +28,13 @@ namespace DR16
  */
 typedef struct
 {
-    /*Your own implementation*/
+    uint16_t channel0 : 11;  // Channel 0 data
+    uint16_t channel1 : 11;  // Channel 1 data
+    uint16_t channel2 : 11;  // Channel 2 data
+    uint16_t channel3 : 11;  // Channel 3 data
 
+    uint8_t s1 : 2;  // Switch 1 data
+    uint8_t s2 : 2;  // Switch 2 data
 } RcData;
 
 /**
@@ -42,6 +49,11 @@ const RcData *getRcData();
 /*You can declare your own function here, supposing you would like to desgin a
  * more complicated DR16 module*/
 
+    extern HAL_Ticks curTime;
+    extern HAL_Ticks prevTime;
+    extern void errorHandler();
+    void decodeAndValidate(uint8_t[]);
+    void CallBackFunc(UART_HandleTypeDef*, uint16_t);
 
 
 /*===========================================================================*/

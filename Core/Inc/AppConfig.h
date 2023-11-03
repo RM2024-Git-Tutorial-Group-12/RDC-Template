@@ -13,6 +13,9 @@
 #pragma once
 
 // dji motor
+#define TRUE 1
+#define FALSE 0
+
 #define USE_DJI_MOTOR TRUE
     #if USE_DJI_MOTOR
         #ifndef DJI_MOTOR_CAN
