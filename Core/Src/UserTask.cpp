@@ -18,10 +18,10 @@
 
 /*Allocate the stack for our PID task*/
 StackType_t DR16TaskStack[configMINIMAL_STACK_SIZE];
-StackType_t testTaskStack[configMINIMAL_STACK_SIZE];
+// StackType_t testTaskStack[configMINIMAL_STACK_SIZE];
 /*Declare the PCB for our PID task*/
 StaticTask_t DR16TaskTCB;
-StaticTask_t testTaskTCB;
+// StaticTask_t testTaskTCB;
 
 /**
  * @todo Show your control outcome of the M3508 motor as follows
@@ -83,13 +83,13 @@ void startUserTasks()
                       1,
                       DR16TaskStack,
                       &DR16TaskTCB);  // Add the main task into the scheduler
-    xTaskCreateStatic(test,
-                      "test ",
-                      configMINIMAL_STACK_SIZE,
-                      NULL,
-                      2,
-                      testTaskStack,
-                      &testTaskTCB); 
+    // xTaskCreateStatic(test,
+    //                   "test ",
+    //                   configMINIMAL_STACK_SIZE,
+    //                   NULL,
+    //                   2,
+    //                   testTaskStack,
+    //                   &testTaskTCB); 
     /**
      * @todo Add your own task here
     */
