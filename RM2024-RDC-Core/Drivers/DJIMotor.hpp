@@ -26,6 +26,9 @@
 namespace DJIMotor
 {
 
+    #define TX_ID 0x200
+    #define EX_TX_ID 0x1FF
+
 /**
  * @brief A motor's handle. We do not require you to master the cpp class
  * syntax.
@@ -37,40 +40,57 @@ namespace DJIMotor
  * @brief Instead of copy and paste your codes for four times
  * @brief This is what we really appreiciate in our programming
  */
-class DJIMotor
-{
-    private:
-        uint16_t canID;  // You need to assign motor's can ID for different motor
-                     // instance
-        uint16_t rotation;
-        uint16_t speed;
-        uint16_t current;
-        uint16_t temp;
-    public:
-        DJIMotor(const int& i);
-        float getEncoder(uint16_t canID);
-        float getRPM(uint16_t canID);
-    /*======================================================*/
-    /**
-     * @brief Your self-defined variables are defined here
-     * @note  Please refer to the GM6020, M3508 motor's user manual that we have
-     * released on the Google Drive
-     * @example:
-     
-     * uint16_t encoder;
-     * uint16_t rpm;
-     * float orientation; //  get the accumulated orientation of the motor
-     * ......
-     */
-    /*=======================================================*/
-};
+
+    CAN_RxHeaderTypeDef rxHeader;
+    
+
+
+    int8_t rxMotorData[8] = {0};
+    enum class MotorResponsibility{
+        WHEEL_MOTOR,
+        ARM_MOTOR
+    };
+
+    class DJIMotor
+    {
+        private:
+            uint16_t canID;  // You need to assign motor's can ID for different motor
+                        // instance
+            int16_t rotation;
+            int16_t speed;
+            int16_t current;
+            int16_t temp;
+            MotorResponsibility type;
+            int8_t txMotorData[8];
+        public:
+            DJIMotor(const int& i);
+            float getRPM(const uint16_t&);
+            float getEncoder(const uint16_t&);
+            void updateInfo();
+            void transmit(uint16_t,int16_t,CAN_TxHeaderTypeDef*);
+        /*======================================================*/
+        /**
+         * @brief Your self-defined variables are defined here
+         * @note  Please refer to the GM6020, M3508 motor's user manual that we have
+         * released on the Google Drive
+         * @example:
+         
+        * uint16_t encoder;
+        * uint16_t rpm;
+        * float orientation; //  get the accumulated orientation of the motor
+        * ......
+        */
+
+        
+        /*=======================================================*/
+    };
 
 /**
  * @brief The whole motor's module initialization function
  * @note  You might initialize the CAN Module here
  * @retval
  */
-void init();
+    void init();
 
 /**
  * @brief The encoder getter fucntion
@@ -127,9 +147,8 @@ accumulated position(orientation) of the motor
  *
 ============================================================*/
 
-
-
-
+void CallBackForCAN(CAN_HandleTypeDef*);
+void ErrorHandler();
 
 /*===========================================================*/
 }  // namespace DJIMotor
