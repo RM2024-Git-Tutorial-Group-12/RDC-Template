@@ -18,11 +18,11 @@
 
 /*Allocate the stack for our PID task*/
 StackType_t DR16TaskStack[configMINIMAL_STACK_SIZE];
-// StackType_t CANWheelTaskStack[configMINIMAL_STACK_SIZE];
+StackType_t CANWheelTaskStack[configMINIMAL_STACK_SIZE];
 // StackType_t CANArmTaskStack[configMINIMAL_STACK_SIZE];
 /*Declare the PCB for our PID task*/
 StaticTask_t DR16TaskTCB;
-// StaticTask_t CANWheelTaskTCB;
+StaticTask_t CANWheelTaskTCB;
 // StaticTask_t CANArmTaskTCB;
 
 /**
@@ -60,25 +60,29 @@ void DR16Communication(void *)
  * @todo In case you like it, please implement your own tasks
  */
 
-// void CANTaskWheel(void *){
-//     CAN_TxHeaderTypeDef txHeaderWheel = {TX_ID, 0, CAN_ID_STD, CAN_RTR_DATA, 8, DISABLE};
-//     CAN_FilterTypeDef FilterWheel = {0x201,0x202,0x203,0x204,CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,CAN_FILTER_ENABLE};
+void CANTaskWheel(void *){
+    CAN_TxHeaderTypeDef txHeaderWheel = {TX_ID, 0, CAN_ID_STD, CAN_RTR_DATA, 8, DISABLE};
+    CAN_FilterTypeDef FilterWheel = {0x201,0x202,0x203,0x204,CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,CAN_FILTER_ENABLE};
 
-//     // HAL_CAN_ConfigFilter(&hcan, &FilterWheel);
-//     // if (HAL_CAN_ActivateNotification(&hcan, CallBackForCAN) != HAL_OK){
-// 	//     DJIMotor::ErrorHandler();
-//     // }
-//     while (true)
-//     {
+    // HAL_CAN_ConfigFilter(&hcan, &FilterWheel);
+    // if (HAL_CAN_ActivateNotification(&hcan, CallBackForCAN) != HAL_OK){
+	//     DJIMotor::ErrorHandler();
+    // }
+    while (true)
+    {
+        const DR16::RcData* uartSnapshot = DR16::getRcData();
+        UART_Convert(uartSnapshot);
+        //uart convert current
+        // 364~x~1684 -->  
+        // pass it 
+        /*The Wheel code*/
         
-//         /*The Wheel code*/
-        
-//         vTaskDelay(1);
+        vTaskDelay(1);
 
-//     }
+    }
     
     
-// }
+}
 
 // void CANTaskArm(void*){
 //     CAN_TxHeaderTypeDef txHeaderArm = {EX_TX_ID,  0, CAN_ID_STD, CAN_RTR_DATA, 8, DISABLE};
@@ -111,13 +115,13 @@ void startUserTasks()
                       DR16TaskStack,
                       &DR16TaskTCB);  // Add the main task into the scheduler
     
-    // xTaskCreateStatic(CANTaskWheel,
-    //                   "CANTaskWheel ",
-    //                   configMINIMAL_STACK_SIZE,
-    //                   NULL,
-    //                   1,
-    //                   CANWheelTaskStack,
-    //                   &CANWheelTaskTCB); 
+    xTaskCreateStatic(CANTaskWheel,
+                      "CANTaskWheel ",
+                      configMINIMAL_STACK_SIZE,
+                      NULL,
+                      1,
+                      CANWheelTaskStack,
+                      &CANWheelTaskTCB); 
                     
     // xTaskCreateStatic(CANTaskArm,
     //                 "CANTaskArm ",

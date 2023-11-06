@@ -47,6 +47,7 @@ namespace DJIMotor
     {
         private:
             uint16_t canID;  // You need to assign motor's can ID for different motor
+            int16_t targetCurrent;
 
             int16_t mechanicalAngle;
             int16_t rotationalSpeed;

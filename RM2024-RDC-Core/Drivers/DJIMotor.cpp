@@ -20,6 +20,7 @@ namespace DJIMotor
 
     DJIMotor::DJIMotor(const int& i){
         canID=0x200+i;
+        targetCurrent = 0;
         mechanicalAngle = 0;
         rotationalSpeed = 0;
         current = 0;
@@ -33,17 +34,18 @@ namespace DJIMotor
         motorTemperature=rxMotorData[6];
     }
 
-    void DJIMotor::getValues(int16_t container[4]){
+    void DJIMotor::getValues(int16_t container[5]){
         container[0] = mechanicalAngle;
         container[1] = rotationalSpeed;
         container[2] = current;
         container[3] = motorTemperature;
+        container[4] = targetCurrent;
     }
 
     int16_t DJIMotor::getCurrent(){return current;}
 
     int16_t DJIMotor::getPIDCurrent(){
-        int16_t information[4];
+        int16_t information[5];
         getValues(information);
         int16_t newCurrent;
 
@@ -135,6 +137,9 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
     HAL_CAN_ActivateNotification(hcan,CAN_IT_RX_FIFO0_MSG_PENDING);
 }
 
+int UART_CONVERT(){
+    
+}
 /* end of the call functions and other supporting functions*/
 
 }  // namespace DJIMotor
