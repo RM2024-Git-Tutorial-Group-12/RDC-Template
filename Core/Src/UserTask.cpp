@@ -20,7 +20,9 @@
 StackType_t DR16TaskStack[configMINIMAL_STACK_SIZE];
 StackType_t CANWheelTaskStack[configMINIMAL_STACK_SIZE];
 // StackType_t CANArmTaskStack[configMINIMAL_STACK_SIZE];
+
 /*Declare the PCB for our PID task*/
+
 StaticTask_t DR16TaskTCB;
 StaticTask_t CANWheelTaskTCB;
 // StaticTask_t CANArmTaskTCB;
@@ -28,6 +30,7 @@ StaticTask_t CANWheelTaskTCB;
 /**
  * @todo Show your control outcome of the M3508 motor as follows
  */
+static volatile int thisIsATestOMG;
 bool connected = true;
 void DR16Communication(void *)
 {
@@ -49,6 +52,8 @@ void DR16Communication(void *)
         else{
             connected = true;
         }
+        // const DR16::RcData* snapshot = DR16::getRcData();
+        // thisIsATestOMG = DJIMotor::UART_ConvertMotor(snapshot);
         /* Your user layer codes in loop end here*/
         /*=================================================*/
 
@@ -71,7 +76,7 @@ void CANTaskWheel(void *){
     while (true)
     {
         const DR16::RcData* uartSnapshot = DR16::getRcData();
-        UART_Convert(uartSnapshot);
+        uint16_t set_point=DJIMotor::UART_ConvertMotor(uartSnapshot);
         //uart convert current
         // 364~x~1684 -->  
         // pass it 

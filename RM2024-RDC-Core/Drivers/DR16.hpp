@@ -20,7 +20,6 @@
 typedef unsigned int HAL_Ticks;
 namespace DR16
 {
-
 /**
  * @brief the DR16 remote controller structure
  * @brief This structure is should be based on the DR16 user manual
