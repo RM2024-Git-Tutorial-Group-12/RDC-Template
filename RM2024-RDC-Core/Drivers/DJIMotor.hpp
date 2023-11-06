@@ -22,6 +22,8 @@
 
 #include "main.h"
 #include "stdint.h"
+#include "can.h"
+#include "PID.hpp"
 
 namespace DJIMotor
 {
@@ -39,35 +41,26 @@ namespace DJIMotor
  * and instantiate them with different parameters
  * @brief Instead of copy and paste your codes for four times
  * @brief This is what we really appreiciate in our programming
- */
-
-    CAN_RxHeaderTypeDef rxHeader;
-    
-
-
-    int8_t rxMotorData[8] = {0};
-    enum class MotorResponsibility{
-        WHEEL_MOTOR,
-        ARM_MOTOR
-    };
+ */ 
 
     class DJIMotor
     {
         private:
             uint16_t canID;  // You need to assign motor's can ID for different motor
-                        // instance
-            int16_t rotation;
-            int16_t speed;
+
+            int16_t mechanicalAngle;
+            int16_t rotationalSpeed;
             int16_t current;
-            int16_t temp;
-            MotorResponsibility type;
-            int8_t txMotorData[8];
+            int16_t motorTemperature;
+
+            // control::PID motorPID; //uncomment the code once the PID has a proper constructor and then update DJIMotor accordingly
         public:
-            DJIMotor(const int& i);
-            float getRPM(const uint16_t&);
-            float getEncoder(const uint16_t&);
-            void updateInfo();
-            void transmit(uint16_t,int16_t,CAN_TxHeaderTypeDef*);
+            DJIMotor(const int& ID);
+            void update(uint8_t* rxBuffer);
+            void getValues(int16_t* container);
+            int16_t getCurrent();
+            int16_t getPIDCurrent();
+
         /*======================================================*/
         /**
          * @brief Your self-defined variables are defined here
@@ -85,12 +78,26 @@ namespace DJIMotor
         /*=======================================================*/
     };
 
+    class MotorPair{
+        private:
+            DJIMotor motor[4];
+            int size;
+        public:
+            MotorPair(const int IDStart, const int s);
+            void transmit(CAN_HandleTypeDef*,CAN_TxHeaderTypeDef*,CAN_FilterTypeDef*);
+            void errorHandler();
+            DJIMotor& operator[](const int);
+            void init(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter);
+    };
+
+    static MotorPair wheels = MotorPair(1,4);
+    static MotorPair arms = MotorPair(5,2);
+
 /**
  * @brief The whole motor's module initialization function
  * @note  You might initialize the CAN Module here
  * @retval
  */
-    void init();
 
 /**
  * @brief The encoder getter fucntion
@@ -146,9 +153,8 @@ accumulated position(orientation) of the motor
  * ..... And more .....
  *
 ============================================================*/
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan);
 
-void CallBackForCAN(CAN_HandleTypeDef*);
-void ErrorHandler();
 
 /*===========================================================*/
 }  // namespace DJIMotor

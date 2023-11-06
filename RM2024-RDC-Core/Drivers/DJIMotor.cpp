@@ -9,73 +9,133 @@
 
 namespace DJIMotor
 {
+/*
+    things to cover
+        - 
 
-// Initialize motor's controller instance
-DJIMotor* motors[6] = {&DJIMotor(1),&DJIMotor(2),&DJIMotor(3),&DJIMotor(4),&DJIMotor(5),&DJIMotor(0x206)};
+*/
 
 
+/* The Declarations of DJIMotor Class*/
 
-/*========================================================*/
-// Your implementation of the function, or even your customized function, should
-// be implemented here
-/*========================================================*/
-/**
- * @todo
- */
-DJIMotor::DJIMotor(const int& i){
-    canID=0x200+i;
-    rotation = 0;
-    speed = 0;
-    current = 0;
-    if (i < 5){type = MotorResponsibility::WHEEL_MOTOR;}
-    else{type = MotorResponsibility::ARM_MOTOR;}
-}
-/**
- * @todo
- */
-float DJIMotor::getEncoder(const uint16_t& canID){
-    return 0.0f;
-}
-
-void DJIMotor::updateInfo(){
-    rotation=rxMotorData[0] <<8 | rxMotorData[1];
-    speed=rxMotorData[2] <<8 | rxMotorData[3];
-    current=rxMotorData[4] <<8 | rxMotorData[5];
-    temp=rxMotorData[6];
-}
-
-/**
- * @todo
- */
-float getRPM(const uint16_t& canID) { return 0.0f; }
-
-/**
- * @todo
- */
-void setOutput(int16_t output) {}
-
-/**
- * @todo
- */
-void DJIMotor::transmit(uint16_t header,int16_t PIDOutput,CAN_TxHeaderTypeDef* header){
-    int32_t mailBox;
-    txMotorData[0] = PIDOutput >> 8;
-    txMotorData[1] = PIDOutput;
-    if (!HAL_CAN_AddTxMessage(&hcan,header,txMotorData,&mailBox)){
-        ErrorHandler();
+    DJIMotor::DJIMotor(const int& i){
+        canID=0x200+i;
+        mechanicalAngle = 0;
+        rotationalSpeed = 0;
+        current = 0;
+        motorTemperature = 25;
     }
 
+    void DJIMotor::update(uint8_t rxMotorData[8]){
+        mechanicalAngle=rxMotorData[0] <<8 | rxMotorData[1];
+        rotationalSpeed=rxMotorData[2] <<8 | rxMotorData[3];
+        current=rxMotorData[4] <<8 | rxMotorData[5];
+        motorTemperature=rxMotorData[6];
+    }
+
+    void DJIMotor::getValues(int16_t container[4]){
+        container[0] = mechanicalAngle;
+        container[1] = rotationalSpeed;
+        container[2] = current;
+        container[3] = motorTemperature;
+    }
+
+    int16_t DJIMotor::getCurrent(){return current;}
+
+    int16_t DJIMotor::getPIDCurrent(){
+        int16_t information[4];
+        getValues(information);
+        int16_t newCurrent;
+
+        /*Call the PID function*/
+
+        return newCurrent;
+    }
+
+/* end of the declaration of DJIMotor class*/
+
+/* Start of the declaration of MotorPair class*/
+
+    MotorPair::MotorPair(const int IDStart, const int numberOfMotors):motor(
+        {DJIMotor(IDStart),DJIMotor(IDStart+1),DJIMotor(IDStart+2),DJIMotor(IDStart+3)}
+    ){
+        size = numberOfMotors;
+    }
+
+    void MotorPair::transmit(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
+        uint8_t txMessage[8] = {0};
+        uint32_t mailBox = 0;
+        int offset = 0;
+
+        for (int index = 0; index < size; index++){
+            int16_t PIDCurrent = motor[index].getPIDCurrent();
+            txMessage[index+offset] = PIDCurrent >> 8;
+            txMessage[index+offset+1] = PIDCurrent;
+            offset++;
+        }
+
+        if (HAL_CAN_AddTxMessage(hcan, header, txMessage, &mailBox) != HAL_OK){
+            errorHandler();
+        }
+    }
+
+    void MotorPair::errorHandler(){
+        /* 
+            - either we can make the motor completely stop which could be more safe
+            - or we could possibly possibly just pass the last 
+            
+            @todo we can consider to do this aftr implementing the PID class
+        */
+    }
+
+    DJIMotor& MotorPair::operator[](const int index){
+        return motor[index];
+    }
+
+    void MotorPair::init(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
+        HAL_CAN_ConfigFilter(hcan, filter);
+        if (HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
+        {
+            errorHandler();
+        }
+    }
+
+/* end of the declaration of the MotorPair class*/
+
+/* Callback functions and other supporting functions */
+
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
+    CAN_RxHeaderTypeDef RxHeader;
+    uint8_t RxData[8];
+
+    HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData);
+    int index = RxHeader.StdId - 0x200;
+
+    switch (index)
+    {
+    case 0: case 1: case 2: case 3:
+        if (status == HAL_OK){
+            wheels[index].update(RxData);
+        }
+        else{
+            wheels.errorHandler();
+        }
+        break;
+    case 4: case 5:
+        if (status == HAL_OK){
+            arms[index].update(RxData);
+        }
+        else{
+            arms.errorHandler();
+        }
+    default:
+        return;
+    }
+
+    HAL_CAN_ActivateNotification(hcan,CAN_IT_RX_FIFO0_MSG_PENDING);
 }
 
-void CallBackForCAN(CAN_HandleTypeDef *hcan){
-    HAL_CAN_GetRxMessage(hcan,CAN_RX_FIFO0,&rxHeader,rxMotorData);
-    motors[rxHeader.StdId]->updateInfo();
-    HAL_CAN_ActivateNotification(hcan,CallBackForCAN);
-}
-
-void ErrorHandler(){
-    
-}
+/* end of the call functions and other supporting functions*/
 
 }  // namespace DJIMotor
 #endif
