@@ -9,7 +9,8 @@
 
 namespace DJIMotor
 {
-
+    
+    MotorPair arms = MotorPair(5,2);
 /* The Declarations of DJIMotor Class*/
 
     DJIMotor::DJIMotor(const int& i){
@@ -28,8 +29,8 @@ namespace DJIMotor
         motorTemperature=rxMotorData[6];
     }
 
-    void DJIMotor::updateTargetCurrent(const int targetCurrent){
-        this->targetCurrent = targetCurrent;
+    void DJIMotor::updateTargetCurrent(const int TC){
+        this->targetCurrent = TC;
     }
 
     void DJIMotor::getValues(int16_t container[5]){
@@ -40,7 +41,7 @@ namespace DJIMotor
         container[4] = targetCurrent;
     }
 
-    int16_t DJIMotor::getPIDCurrent(){
+    int DJIMotor::getPIDCurrent(){
         int16_t information[5];
         getValues(information);
         int16_t newCurrent;
@@ -48,6 +49,10 @@ namespace DJIMotor
         /*Call the PID function*/
 
         return newCurrent;
+    }
+
+    int DJIMotor::getCANID(){
+        return canID;
     }
 
 /* end of the declaration of DJIMotor class*/
@@ -98,9 +103,9 @@ namespace DJIMotor
         }
     }
 
-    void MotorPair::updateCurrents(const int NewCurrent[4]){
+    void MotorPair::updateCurrents(const int NewCurrents[4]){
         for (int index = 0; index < size; index++){
-            motor[index].updateTargetCurrent(NewCurrent[index]);
+            motor[index].updateTargetCurrent(NewCurrents[index]);
         }
     }
 
@@ -129,7 +134,7 @@ namespace DJIMotor
     
     after all of this, the strengths of the cartesian and rotation will be added 
 */
-void UART_ConvertMotor(const DR16::RcData& RCdata,int motorCurrents[4]){
+void UART_ConvertMotor(const DR16::RcData& RCdata,int motorCurrents[4],MotorPair& pair){
 
     const int x = RCdata.channel1;
     const int y = RCdata.channel0;
@@ -142,11 +147,17 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,int motorCurrents[4]){
     int multiple = (convX && convY)?2:1;
     const int convW = ((w-364)*8-5280) * multiple;
 
-    if (convW){
-        motorCurrents[0] = -1*convX + convY + convW;
-        motorCurrents[1] = -1*convX + -1*convY + convW;
+    if (convW > 0){
+        motorCurrents[0] = -convX + convY + convW;
+        motorCurrents[1] = -convX -convY + convW;
         motorCurrents[2] = convX + convY + convW;
-        motorCurrents[3] = convX + -1*convY + convW;
+        motorCurrents[3] = convX - convY + convW;
+    }
+    else if (convW < 0){
+        motorCurrents[0] = convX - convY + convW;
+        motorCurrents[1] = convX + convY + convW;
+        motorCurrents[2] = -convX -convY + convW;
+        motorCurrents[3] = -convX + convY + convW;
     }
     else{
         motorCurrents[0] = convX + convY;
@@ -156,8 +167,8 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,int motorCurrents[4]){
     }
 
     normalise(motorCurrents,20000);
-    wheels.updateCurrents(motorCurrents);
-    
+    pair.updateCurrents(motorCurrents);
+
 }
 
 void normalise(int values[4], const int upperVal){
@@ -176,33 +187,14 @@ int max(const int a, const int b){
     return (a>b)?a:b;
 }
 
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
+void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan, MotorPair& pair){
     CAN_RxHeaderTypeDef RxHeader;
     uint8_t RxData[8];
-    HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData);
-    int index = RxHeader.StdId - 0x200;
 
-    switch (index)
-    {
-    case 0: case 1: case 2: case 3:
-        if (status == HAL_OK){
-            wheels[index].updateInfoFromCAN(RxData);
-        }
-        else{
-            wheels.errorHandler();
-        }
-        break;
-    case 4: case 5:
-        if (status == HAL_OK){
-            arms[index].updateInfoFromCAN(RxData);
-        }
-        else{
-            arms.errorHandler();
-        }
-        break;
-    default:
-        return;
-    }
+    HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData);
+
+    int index = RxHeader.StdId - pair[0].getCANID();
+    pair[index].updateInfoFromCAN(RxData);
 
     HAL_CAN_ActivateNotification(hcan,CAN_IT_RX_FIFO0_MSG_PENDING);
 }

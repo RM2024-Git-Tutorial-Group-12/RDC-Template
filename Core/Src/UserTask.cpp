@@ -29,6 +29,9 @@ StaticTask_t CANWheelTaskTCB;
 // StaticTask_t CANArmTaskTCB;
 
 static DR16::RcData uartSnapshot;
+static DJIMotor::MotorPair wheels = DJIMotor::MotorPair(1,4);
+static DJIMotor::MotorPair arms = DJIMotor::MotorPair(5,2);
+
 /**
  * @todo Show your control outcome of the M3508 motor as follows
  */
@@ -71,15 +74,16 @@ void CANTaskWheel(void *){
                                         CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,
                                         CAN_FILTER_ENABLE,0};
 
-    // volatile static int x;
-    DJIMotor::wheels.init(&hcan,&txHeaderWheel,&FilterWheel);
-    static int motorVals[4] = {0};
+    
+    wheels.init(&hcan,&txHeaderWheel,&FilterWheel);
+    int motorVals[4] = {0};
 
     while (true)
     {
-    
-        DJIMotor::UART_ConvertMotor(uartSnapshot,motorVals);
-        DJIMotor::wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
+
+        DJIMotor::UART_ConvertMotor(uartSnapshot,motorVals,wheels);
+        wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
+
         // x++;
         //uart convert current
         // 364~x~1684 -->  

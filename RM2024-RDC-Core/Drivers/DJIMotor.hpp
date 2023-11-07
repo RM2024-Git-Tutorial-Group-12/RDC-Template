@@ -48,12 +48,12 @@ namespace DJIMotor
     {
         private:
             uint16_t canID;  // You need to assign motor's can ID for different motor
-            int16_t targetCurrent;
+            int targetCurrent;
 
-            int16_t mechanicalAngle;
-            int16_t rotationalSpeed;
-            int16_t current;
-            int16_t motorTemperature;
+            int mechanicalAngle;
+            int rotationalSpeed;
+            int current;
+            int motorTemperature;
 
             // control::PID motorPID; //uncomment the code once the PID has a proper constructor and then update DJIMotor accordingly
         public:
@@ -61,8 +61,8 @@ namespace DJIMotor
             void updateInfoFromCAN(const uint8_t* rxBuffer);
             void updateTargetCurrent(const int rx);
             void getValues(int16_t* container);
-            int16_t getPIDCurrent();
-            
+            int getPIDCurrent();
+            int getCANID();
 
         /*======================================================*/
         /**
@@ -93,9 +93,6 @@ namespace DJIMotor
             void init(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter);
             void updateCurrents(const int*);
     };
-
-    static MotorPair wheels = MotorPair(1,4);
-    static MotorPair arms = MotorPair(5,2);
 
     // struct motorMechanics{
     //     int motor1;
@@ -164,7 +161,7 @@ void setOutput(int16_t output);
  * @retval
  */
 void transmit(uint16_t header);
-extern void UART_ConvertMotor(const DR16::RcData&,int*);
+extern void UART_ConvertMotor(const DR16::RcData&,int*,MotorPair&);
 /*===========================================================*/
 /**
  * @brief You can define your customized function here
