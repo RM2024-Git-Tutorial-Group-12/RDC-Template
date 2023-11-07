@@ -187,34 +187,15 @@ void UART_ConvertMotor(const DR16::RcData& rcdata,int motorCurrents[4]){
     // a contrained limit of 7920 has been set, which can be changed later
 
     int convX = ((x-364)*12-7920); 
-    int negX = ((364-x)*12+7920);
     int convY = ((y-364)*12-7920);
-    int negY = ((364-y)*12+7920);
     int multiple = (convX && convY)?2:1;
     int convW = ((w-364)*12-7920) * multiple;
 
-    // static int xArray[4]; xArray[0] = convX; xArray[1] = -1*convX; xArray[2] = convX; xArray[3] = -1*convX;
-    // static int yArray[4]; yArray[0] = convY; yArray[1] = convY;  yArray[2] = -1*convY; yArray[3] = -1*convY;
-    // static int wArray[4]; wArray[0] = convW; wArray[1] = convW; wArray[3] = convW; wArray[] = convW;
-
-    motorMechanics XMov(convX,negX,convX,negX);
-    motorMechanics YMov(convY,convY,negY,negY);
-    static motorMechanics motorStrenghts = XMov + YMov;
-
-    switch (convW > 0)
-    {
-    case true:
-        motorStrenghts.matrixRotateLeft();
-        break;
-    case false:
-        motorStrenghts.matrixRotateRight();
-        break;
-    }
-
-    motorStrenghts = motorStrenghts + motorMechanics(convW,convW,convW,convW);
-    motorStrenghts.normalise(7920*1.5);
-
-    motorStrenghts.cpyMotorVals(motorCurrents);
+    motorCurrents[0] = -1*convX + convY + convW;
+    motorCurrents[1] = -1*convX + -1*convY + convW;
+    motorCurrents[2] = convX + convY + convW;
+    motorCurrents[3] = convX + -1*convY + convW;
+    
 
     wheels.updateCurrents(motorCurrents);
     

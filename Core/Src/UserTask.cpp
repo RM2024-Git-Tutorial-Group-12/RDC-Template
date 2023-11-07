@@ -68,19 +68,19 @@ void DR16Communication(void *)
  */
 
 void CANTaskWheel(void *){
-    CAN_TxHeaderTypeDef txHeaderWheel = {TX_ID, 0, CAN_ID_STD, CAN_RTR_DATA, 8, DISABLE};
-    CAN_FilterTypeDef FilterWheel = {0x201 << 5, 0x202 << 5,0x203 << 5,0x204 << 5,
-                                        CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,
-                                        CAN_FILTER_ENABLE,0};
+    // CAN_TxHeaderTypeDef txHeaderWheel = {TX_ID, 0, CAN_ID_STD, CAN_RTR_DATA, 8, DISABLE};
+    // CAN_FilterTypeDef FilterWheel = {0x201 << 5, 0x202 << 5,0x203 << 5,0x204 << 5,
+    //                                     CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,
+    //                                     CAN_FILTER_ENABLE,0};
 
-    // volatile static int x;
-    DJIMotor::wheels.init(&hcan,&txHeaderWheel,&FilterWheel);
-    int motorVals[4] = {0};
+    // // volatile static int x;
+    // DJIMotor::wheels.init(&hcan,&txHeaderWheel,&FilterWheel);
+    static int motorVals[4] = {0};
 
     while (true)
     {
         DJIMotor::UART_ConvertMotor(uartSnapshot,motorVals);
-        DJIMotor::wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
+        // DJIMotor::wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
         // x++;
         //uart convert current
         // 364~x~1684 -->  
