@@ -97,18 +97,28 @@ namespace DJIMotor
     static MotorPair wheels = MotorPair(1,4);
     static MotorPair arms = MotorPair(5,2);
 
-    struct motorMechanics{
-        int motor1;
-        int motor2;
-        int motor3;
-        int motor4;
-        motorMechanics operator+(const motorMechanics& values);
-        void normalise(const int max);
-        void cpyMotorVals(int*);
-        // the role of the following two functions is to help to have the idea of moving pivot and then rotating
-        void matrixRotateLeft(); 
-        void matrixRotateRight();
-    };
+    // struct motorMechanics{
+    //     int motor1;
+    //     int motor2;
+    //     int motor3;
+    //     int motor4;
+
+    //     motorMechanics(const int, const int, const int, const int);
+    //     motorMechanics(const int*);
+    //     void operator=(const int*);
+    //     void operator=(const motorMechanics&);
+
+    //     motorMechanics operator+(const motorMechanics& values);
+
+    //     void normalise(const int max);
+    //     void cpyMotorVals(int*);
+
+    //     // the role of the following two functions is to help to have the idea of moving pivot and then rotating
+    //     void matrixRotateLeft(); 
+    //     void matrixRotateRight();
+    // };
+    int max(const int a, const int b);
+    void normalise(int*,const int);
 /**
  * @brief The whole motor's module initialization function
  * @note  You might initialize the CAN Module here
@@ -154,7 +164,7 @@ void setOutput(int16_t output);
  * @retval
  */
 void transmit(uint16_t header);
-void UART_ConvertMotor(DR16::RcData*,int*);
+extern void UART_ConvertMotor(const DR16::RcData&,int*);
 /*===========================================================*/
 /**
  * @brief You can define your customized function here

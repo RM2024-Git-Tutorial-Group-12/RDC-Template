@@ -28,7 +28,9 @@ namespace DJIMotor
         motorTemperature=rxMotorData[6];
     }
 
-    void DJIMotor::updateTargetCurrent(const int targetCurrent){this->targetCurrent = targetCurrent;}
+    void DJIMotor::updateTargetCurrent(const int targetCurrent){
+        this->targetCurrent = targetCurrent;
+    }
 
     void DJIMotor::getValues(int16_t container[5]){
         container[0] = mechanicalAngle;
@@ -97,40 +99,15 @@ namespace DJIMotor
     }
 
     void MotorPair::updateCurrents(const int NewCurrent[4]){
-        for (int index = 0; index < size; index++){motor[index].updateTargetCurrent(NewCurrent[index]);}
+        for (int index = 0; index < size; index++){
+            motor[index].updateTargetCurrent(NewCurrent[index]);
+        }
     }
 
 /* end of the declaration of the MotorPair class*/
 
 /* Start of the declaration of motorMechanics */
 
-    motorMechanics motorMechanics::operator+(const motorMechanics& otherMatrix){
-        return {
-            otherMatrix.motor1 + motor1,
-            otherMatrix.motor2 + motor2,
-            otherMatrix.motor3 + motor3,
-            otherMatrix.motor4 + motor4
-        };
-    }
-
-    void motorMechanics::normalise(const int upperBound){
-        int total = max(motor1,-motor1) + max(motor2,-motor2) + max(motor3,-motor3) + max(motor4,-motor4);
-        motor1 = (motor1/total)*upperBound;
-        motor2 = (motor2/total)*upperBound;
-        motor3 = (motor3/total)*upperBound;
-        motor4 = (motor4/total)*upperBound;
-    }
-
-    void motorMechanics::cpyMotorVals(int container[4]){
-        container[0] = motor1; 
-        container[1] = motor2; 
-        container[2] = motor3; 
-        container[3] = motor4;
-    }
-
-    void motorMechanics::matrixRotateLeft(){*this = {motor2,motor4,motor1,motor3};}
-
-    void motorMechanics::matrixRotateRight(){*this = {motor3,motor1,motor4,motor2};}
 /* end of the declaration of the motorMechanics*/
 
 /* Callback functions and other supporting functions */
@@ -152,43 +129,52 @@ namespace DJIMotor
     
     after all of this, the strengths of the cartesian and rotation will be added 
 */
-void UART_ConvertMotor(DR16::RcData* rcdata,int motorCurrents[4]){
+void UART_ConvertMotor(const DR16::RcData& RCdata,int motorCurrents[4]){
 
-    int x = rcdata->channel1;
-    int y = rcdata->channel0;
-    int w = rcdata->channel2;
+    const int x = RCdata.channel1;
+    const int y = RCdata.channel0;
+    const int w = RCdata.channel2;
 
     // a contrained limit of 7920 has been set, which can be changed later
 
-    int convX = ((x-364)*12-7920); 
-    int convY = ((y-364)*12-7920);
+    const int convX = ((x-364)*8-5280); 
+    const int convY = ((y-364)*8-5280);
     int multiple = (convX && convY)?2:1;
-    int convW = ((w-364)*12-7920) * multiple;
+    const int convW = ((w-364)*8-5280) * multiple;
 
-    motorMechanics motorStrenghts = motorMechanics({convX,-convX,convX,-convX}) + motorMechanics({convY,convY,-convY,-convY});
-
-    switch (convW > 0)
-    {
-    case true:
-        motorStrenghts.matrixRotateLeft();
-        break;
-    case false:
-        motorStrenghts.matrixRotateRight();
-        break;
+    if (convW){
+        motorCurrents[0] = -1*convX + convY + convW;
+        motorCurrents[1] = -1*convX + -1*convY + convW;
+        motorCurrents[2] = convX + convY + convW;
+        motorCurrents[3] = convX + -1*convY + convW;
+    }
+    else{
+        motorCurrents[0] = convX + convY;
+        motorCurrents[2] = -1*convX + convY;
+        motorCurrents[1] = convX + -1*convY;
+        motorCurrents[3] = -1*convX + -1*convY;
     }
 
-    motorStrenghts = motorStrenghts + motorMechanics({convW,convW,convW,convW});
-    motorStrenghts.normalise(7920*1.5);
-
-    motorStrenghts.cpyMotorVals(motorCurrents);
-
+    normalise(motorCurrents,20000);
     wheels.updateCurrents(motorCurrents);
     
 }
 
-    int max(const int a, const int b){
-        return (a>b)?a:b;
+void normalise(int values[4], const int upperVal){
+    int total = 0;
+    for (int i = 0; i < 4; i++){
+        if (values[i] > 0){total+=values[i];}
+        else{total += (-1*values[i]);}
     }
+    for (int i = 0; i < 4; i++){
+        values[i] *= upperVal;
+        values[i] /= total;
+    }
+}
+
+int max(const int a, const int b){
+    return (a>b)?a:b;
+}
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
     CAN_RxHeaderTypeDef RxHeader;
@@ -200,7 +186,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
     {
     case 0: case 1: case 2: case 3:
         if (status == HAL_OK){
-            wheels[index].update(RxData);
+            wheels[index].updateInfoFromCAN(RxData);
         }
         else{
             wheels.errorHandler();
@@ -208,11 +194,12 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
         break;
     case 4: case 5:
         if (status == HAL_OK){
-            arms[index].update(RxData);
+            arms[index].updateInfoFromCAN(RxData);
         }
         else{
             arms.errorHandler();
         }
+        break;
     default:
         return;
     }
