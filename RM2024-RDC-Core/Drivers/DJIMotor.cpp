@@ -21,12 +21,14 @@ namespace DJIMotor
         motorTemperature = 25;
     }
 
-    void DJIMotor::update(uint8_t rxMotorData[8]){
+    void DJIMotor::updateInfoFromCAN(const uint8_t rxMotorData[8]){
         mechanicalAngle=rxMotorData[0] <<8 | rxMotorData[1];
         rotationalSpeed=rxMotorData[2] <<8 | rxMotorData[3];
         current=rxMotorData[4] <<8 | rxMotorData[5];
         motorTemperature=rxMotorData[6];
     }
+
+    void DJIMotor::updateTargetCurrent(const int targetCurrent){this->targetCurrent = targetCurrent;}
 
     void DJIMotor::getValues(int16_t container[5]){
         container[0] = mechanicalAngle;
@@ -35,8 +37,6 @@ namespace DJIMotor
         container[3] = motorTemperature;
         container[4] = targetCurrent;
     }
-
-    int16_t DJIMotor::getCurrent(){return current;}
 
     int16_t DJIMotor::getPIDCurrent(){
         int16_t information[5];
@@ -96,6 +96,10 @@ namespace DJIMotor
         }
     }
 
+    void MotorPair::updateCurrents(const int NewCurrent[4]){
+        for (int index = 0; index < size; index++){motor[index].updateTargetCurrent(NewCurrent[index]);}
+    }
+
 /* end of the declaration of the MotorPair class*/
 
 /* Start of the declaration of motorMechanics */
@@ -123,6 +127,10 @@ namespace DJIMotor
         container[2] = motor3; 
         container[3] = motor4;
     }
+
+    void motorMechanics::matrixRotateLeft(){*this = {motor2,motor4,motor1,motor3};}
+
+    void motorMechanics::matrixRotateRight(){*this = {motor3,motor1,motor4,motor2};}
 /* end of the declaration of the motorMechanics*/
 
 /* Callback functions and other supporting functions */
@@ -158,10 +166,22 @@ void UART_ConvertMotor(DR16::RcData* rcdata,int motorVals[4]){
     int convW = ((w-364)*12-7920) * multiple;
 
     motorMechanics motorStrenghts = motorMechanics({convX,-convX,convX,-convX}) + motorMechanics({convY,convY,-convY,-convY});
+
+    switch (convW > 0)
+    {
+    case true:
+        motorStrenghts.matrixRotateLeft();
+        break;
+    case false:
+        motorStrenghts.matrixRotateRight();
+        break;
+    }
+
     motorStrenghts = motorStrenghts + motorMechanics({convW,convW,convW,convW});
     motorStrenghts.normalise(7920*1.5);
 
     motorStrenghts.cpyMotorVals(motorVals);
+    
 }
 
     int max(const int a, const int b){

@@ -72,17 +72,14 @@ void CANTaskWheel(void *){
                                         CAN_FILTER_ENABLE,0};
 
     // volatile static int x;
-    // HAL_CAN_ConfigFilter(&hcan, &FilterWheel);
-    // if (HAL_CAN_ActivateNotification(&hcan, CallBackForCAN) != HAL_OK){
-	//     DJIMotor::ErrorHandler();
-    // }
+    DJIMotor::wheels.init(&hcan,&txHeaderWheel,&FilterWheel);
     static int motorVals[4] = {0};
+
     while (true)
     {
         DR16::RcData uartSnapshot = *DR16::getRcData();
-        
         DJIMotor::UART_ConvertMotor(&uartSnapshot,motorVals);
-
+        
         // x++;
         //uart convert current
         // 364~x~1684 -->  

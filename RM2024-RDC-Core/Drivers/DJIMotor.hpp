@@ -58,10 +58,11 @@ namespace DJIMotor
             // control::PID motorPID; //uncomment the code once the PID has a proper constructor and then update DJIMotor accordingly
         public:
             DJIMotor(const int& ID);
-            void update(uint8_t* rxBuffer);
+            void updateInfoFromCAN(const uint8_t* rxBuffer);
+            void updateTargetCurrent(const int rx);
             void getValues(int16_t* container);
-            int16_t getCurrent();
             int16_t getPIDCurrent();
+            
 
         /*======================================================*/
         /**
@@ -90,6 +91,7 @@ namespace DJIMotor
             void errorHandler();
             DJIMotor& operator[](const int);
             void init(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter);
+            void updateCurrents(const int*);
     };
 
     static MotorPair wheels = MotorPair(1,4);
@@ -103,6 +105,9 @@ namespace DJIMotor
         motorMechanics operator+(const motorMechanics& values);
         void normalise(const int max);
         void cpyMotorVals(int*);
+        // the role of the following two functions is to help to have the idea of moving pivot and then rotating
+        void matrixRotateLeft(); 
+        void matrixRotateRight();
     };
 /**
  * @brief The whole motor's module initialization function
