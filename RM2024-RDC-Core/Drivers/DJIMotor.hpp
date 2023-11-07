@@ -149,7 +149,7 @@ void setOutput(int16_t output);
  * @retval
  */
 void transmit(uint16_t header);
-void UART_ConvertMotor(const DR16::RcData*,int*);
+void UART_ConvertMotor(DR16::RcData*,int*);
 /*===========================================================*/
 /**
  * @brief You can define your customized function here

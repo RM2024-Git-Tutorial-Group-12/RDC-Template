@@ -109,22 +109,25 @@ namespace DJIMotor
         };
     }
 
-    void motorMechanics::normalise(const int max){
-        int total = motor1 + motor2 + motor3 + motor4;
-        motor1 = (motor1/total)*max;
-        motor2 = (motor2/total)*max;
-        motor3 = (motor3/total)*max;
-        motor4 = (motor4/total)*max;
+    void motorMechanics::normalise(const int upperBound){
+        int total = max(motor1,-motor1) + max(motor2,-motor2) + max(motor3,-motor3) + max(motor4,-motor4);
+        motor1 = (motor1/total)*upperBound;
+        motor2 = (motor2/total)*upperBound;
+        motor3 = (motor3/total)*upperBound;
+        motor4 = (motor4/total)*upperBound;
     }
 
     void motorMechanics::cpyMotorVals(int container[4]){
-        container[0] = motor1; container[1] = motor2; container[2] = motor3; container[3] = motor4;
+        container[0] = motor1; 
+        container[1] = motor2; 
+        container[2] = motor3; 
+        container[3] = motor4;
     }
 /* end of the declaration of the motorMechanics*/
 
 /* Callback functions and other supporting functions */
 
-void UART_ConvertMotor(const DR16::RcData* rcdata,int motorVals[4]){
+void UART_ConvertMotor(DR16::RcData* rcdata,int motorVals[4]){
     /*
         Channel 0: determines the X axis and speed
         Channel 1: determines the Y axis and speed
@@ -142,10 +145,10 @@ void UART_ConvertMotor(const DR16::RcData* rcdata,int motorVals[4]){
         
         after all of this, the strengths of the cartesian and rotation will be added 
     */
-    int16_t target[4]={0};
-    uint16_t x = rcdata->channel1;
-    uint16_t y = rcdata->channel0;
-    uint16_t w = rcdata->channel2;
+
+    int x = rcdata->channel1;
+    int y = rcdata->channel0;
+    int w = rcdata->channel2;
 
     // a contrained limit of 7920 has been set, which can be changed later
 
@@ -154,15 +157,16 @@ void UART_ConvertMotor(const DR16::RcData* rcdata,int motorVals[4]){
     int multiple = (convX && convY)?2:1;
     int convW = ((w-364)*12-7920) * multiple;
 
-    int multiple = (convX && convY)?2:1;
-    motorMechanics motorStrenghts = motorMechanics({convX,-convX,convX,-convX}) + 
-                                    motorMechanics({convY,convY,-convY,-convY}) + 
-                                    motorMechanics({convW,convW,convW,convW});
+    motorMechanics motorStrenghts = motorMechanics({convX,-convX,convX,-convX}) + motorMechanics({convY,convY,-convY,-convY});
+    motorStrenghts = motorStrenghts + motorMechanics({convW,convW,convW,convW});
     motorStrenghts.normalise(7920*1.5);
 
     motorStrenghts.cpyMotorVals(motorVals);
 }
 
+    int max(const int a, const int b){
+        return (a>b)?a:b;
+    }
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
     CAN_RxHeaderTypeDef RxHeader;

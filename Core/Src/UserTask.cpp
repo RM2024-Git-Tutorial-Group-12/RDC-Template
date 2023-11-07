@@ -15,6 +15,7 @@
 #include "PID.hpp"     // Include PID
 #include "main.h"
 #include "task.h"  // Include task
+#include "semphr.h"
 
 /*Allocate the stack for our PID task*/
 StackType_t DR16TaskStack[configMINIMAL_STACK_SIZE];
@@ -27,10 +28,10 @@ StaticTask_t DR16TaskTCB;
 StaticTask_t CANWheelTaskTCB;
 // StaticTask_t CANArmTaskTCB;
 
+
 /**
  * @todo Show your control outcome of the M3508 motor as follows
  */
-static volatile int thisIsATestOMG;
 bool connected = true;
 void DR16Communication(void *)
 {
@@ -41,6 +42,7 @@ void DR16Communication(void *)
     /*=================================================*/
     while (true)
     {
+        
         /* Your user layer codes in loop begin here*/
         /*=================================================*/
         DR16::curTime = HAL_GetTick();
@@ -52,8 +54,6 @@ void DR16Communication(void *)
         else{
             connected = true;
         }
-        // const DR16::RcData* snapshot = DR16::getRcData();
-        // thisIsATestOMG = DJIMotor::UART_ConvertMotor(snapshot);
         /* Your user layer codes in loop end here*/
         /*=================================================*/
 
@@ -67,16 +67,23 @@ void DR16Communication(void *)
 
 void CANTaskWheel(void *){
     CAN_TxHeaderTypeDef txHeaderWheel = {TX_ID, 0, CAN_ID_STD, CAN_RTR_DATA, 8, DISABLE};
-    CAN_FilterTypeDef FilterWheel = {0x201,0x202,0x203,0x204,CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,CAN_FILTER_ENABLE};
+    CAN_FilterTypeDef FilterWheel = {0x201 << 5, 0x202 << 5,0x203 << 5,0x204 << 5,
+                                        CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,
+                                        CAN_FILTER_ENABLE,0};
 
+    // volatile static int x;
     // HAL_CAN_ConfigFilter(&hcan, &FilterWheel);
     // if (HAL_CAN_ActivateNotification(&hcan, CallBackForCAN) != HAL_OK){
 	//     DJIMotor::ErrorHandler();
     // }
+    static int motorVals[4] = {0};
     while (true)
     {
-        const DR16::RcData* uartSnapshot = DR16::getRcData();
-        uint16_t set_point=DJIMotor::UART_ConvertMotor(uartSnapshot);
+        DR16::RcData uartSnapshot = *DR16::getRcData();
+        
+        DJIMotor::UART_ConvertMotor(&uartSnapshot,motorVals);
+
+        // x++;
         //uart convert current
         // 364~x~1684 -->  
         // pass it 
@@ -89,20 +96,6 @@ void CANTaskWheel(void *){
     
 }
 
-// void CANTaskArm(void*){
-//     CAN_TxHeaderTypeDef txHeaderArm = {EX_TX_ID,  0, CAN_ID_STD, CAN_RTR_DATA, 8, DISABLE};
-//     CAN_FilterTypeDef FilterArm = {0x205,0x206,0,0,CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,CAN_FILTER_ENABLE};
-//     HAL_CAN_ConfigFilter(&hcan, &FilterArm);
-
-//     while (true)
-//     {
-//         /* code */
-
-//         vTaskDelay(1);
-//     }
-    
-// }
-
 /**
  * @brief Intialize all the drivers and add task to the scheduler
  * @todo  Add your own task in this file
@@ -111,30 +104,22 @@ void startUserTasks()
 {
     DR16::init();
     HAL_CAN_Start(&hcan);
-
     xTaskCreateStatic(DR16Communication,
                       "DR16_Communication ",
                       configMINIMAL_STACK_SIZE,
                       NULL,
                       1,
                       DR16TaskStack,
-                      &DR16TaskTCB);  // Add the main task into the scheduler
+                      &DR16TaskTCB);  
     
     xTaskCreateStatic(CANTaskWheel,
                       "CANTaskWheel ",
                       configMINIMAL_STACK_SIZE,
                       NULL,
-                      1,
+                      2,
                       CANWheelTaskStack,
                       &CANWheelTaskTCB); 
-                    
-    // xTaskCreateStatic(CANTaskArm,
-    //                 "CANTaskArm ",
-    //                 configMINIMAL_STACK_SIZE,
-    //                 NULL,
-    //                 1,
-    //                 CANArmTaskStack,
-    //                 &CANArmTaskTCB); 
+
     /**
      * @todo Add your own task here
     */
