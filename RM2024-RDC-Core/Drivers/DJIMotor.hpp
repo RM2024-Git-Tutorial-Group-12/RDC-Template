@@ -102,7 +102,10 @@ namespace DJIMotor
         int motor2;
         int motor3;
         int motor4;
-        motorMechanics operator+(const motorMechanics& values);
+        motorMechanics(const int, const int, const int, const int);
+        motorMechanics(int*);
+        void operator=(int*);
+        motorMechanics& operator+(const motorMechanics& values);
         void normalise(const int max);
         void cpyMotorVals(int*);
         // the role of the following two functions is to help to have the idea of moving pivot and then rotating
@@ -114,6 +117,8 @@ namespace DJIMotor
  * @note  You might initialize the CAN Module here
  * @retval
  */
+
+int max(const int a,const int b);
 
 /**
  * @brief The encoder getter fucntion
@@ -154,7 +159,7 @@ void setOutput(int16_t output);
  * @retval
  */
 void transmit(uint16_t header);
-void UART_ConvertMotor(DR16::RcData*,int*);
+void UART_ConvertMotor(const DR16::RcData&,int*);
 /*===========================================================*/
 /**
  * @brief You can define your customized function here

@@ -28,6 +28,7 @@ StaticTask_t DR16TaskTCB;
 StaticTask_t CANWheelTaskTCB;
 // StaticTask_t CANArmTaskTCB;
 
+static DR16::RcData uartSnapshot;
 
 /**
  * @todo Show your control outcome of the M3508 motor as follows
@@ -54,6 +55,7 @@ void DR16Communication(void *)
         else{
             connected = true;
         }
+        uartSnapshot  = *DR16::getRcData();
         /* Your user layer codes in loop end here*/
         /*=================================================*/
 
@@ -73,12 +75,11 @@ void CANTaskWheel(void *){
 
     // volatile static int x;
     DJIMotor::wheels.init(&hcan,&txHeaderWheel,&FilterWheel);
-    static int motorVals[4] = {0};
+    int motorVals[4] = {0};
 
     while (true)
     {
-        DR16::RcData uartSnapshot = *DR16::getRcData();
-        DJIMotor::UART_ConvertMotor(&uartSnapshot,motorVals);
+        DJIMotor::UART_ConvertMotor(uartSnapshot,motorVals);
         DJIMotor::wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
         // x++;
         //uart convert current

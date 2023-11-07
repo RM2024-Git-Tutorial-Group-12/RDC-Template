@@ -10,6 +10,7 @@
 namespace DJIMotor
 {
 
+
 /* The Declarations of DJIMotor Class*/
 
     DJIMotor::DJIMotor(const int& i){
@@ -104,13 +105,12 @@ namespace DJIMotor
 
 /* Start of the declaration of motorMechanics */
 
-    motorMechanics motorMechanics::operator+(const motorMechanics& otherMatrix){
-        return {
-            otherMatrix.motor1 + motor1,
-            otherMatrix.motor2 + motor2,
-            otherMatrix.motor3 + motor3,
-            otherMatrix.motor4 + motor4
-        };
+    motorMechanics& motorMechanics::operator+(const motorMechanics& otherMatrix){
+        motor1 += otherMatrix.motor1;
+        motor2 += otherMatrix.motor2;
+        motor3 += otherMatrix.motor3;
+        motor4 += otherMatrix.motor4;
+        return *this;
     }
 
     void motorMechanics::normalise(const int upperBound){
@@ -128,9 +128,35 @@ namespace DJIMotor
         container[3] = motor4;
     }
 
-    void motorMechanics::matrixRotateLeft(){*this = {motor2,motor4,motor1,motor3};}
+    motorMechanics::motorMechanics(const int a, const int b, const int c, const int d){
+        motor1 = a;
+        motor2 = b;
+        motor3 = c;
+        motor4 = d;
+    }
 
-    void motorMechanics::matrixRotateRight(){*this = {motor3,motor1,motor4,motor2};}
+    motorMechanics::motorMechanics(int motorVals[4]){
+        motor1 = motorVals[0];
+        motor2 = motorVals[1];
+        motor3 = motorVals[2];
+        motor4 = motorVals[3];
+    }
+
+    void motorMechanics::operator=(int motorVals[4]){
+        motor1 = motorVals[0];
+        motor2 = motorVals[1];
+        motor3 = motorVals[2];
+        motor4 = motorVals[3];
+    }
+    void motorMechanics::matrixRotateLeft(){
+        int newOrientation[4] = {motor2,motor4,motor1,motor3};
+        *this = newOrientation;
+    }
+
+    void motorMechanics::matrixRotateRight(){
+        int newOrientation[4] = {motor3,motor1,motor4,motor2};
+        *this = newOrientation;
+    }
 /* end of the declaration of the motorMechanics*/
 
 /* Callback functions and other supporting functions */
@@ -152,20 +178,28 @@ namespace DJIMotor
     
     after all of this, the strengths of the cartesian and rotation will be added 
 */
-void UART_ConvertMotor(DR16::RcData* rcdata,int motorCurrents[4]){
+void UART_ConvertMotor(const DR16::RcData& rcdata,int motorCurrents[4]){
 
-    int x = rcdata->channel1;
-    int y = rcdata->channel0;
-    int w = rcdata->channel2;
+    int x = (int)rcdata.channel1;
+    int y = (int)rcdata.channel0;
+    int w = (int)rcdata.channel2;
 
     // a contrained limit of 7920 has been set, which can be changed later
 
     int convX = ((x-364)*12-7920); 
+    int negX = ((364-x)*12+7920);
     int convY = ((y-364)*12-7920);
+    int negY = ((364-y)*12+7920);
     int multiple = (convX && convY)?2:1;
     int convW = ((w-364)*12-7920) * multiple;
 
-    motorMechanics motorStrenghts = motorMechanics({convX,-convX,convX,-convX}) + motorMechanics({convY,convY,-convY,-convY});
+    // static int xArray[4]; xArray[0] = convX; xArray[1] = -1*convX; xArray[2] = convX; xArray[3] = -1*convX;
+    // static int yArray[4]; yArray[0] = convY; yArray[1] = convY;  yArray[2] = -1*convY; yArray[3] = -1*convY;
+    // static int wArray[4]; wArray[0] = convW; wArray[1] = convW; wArray[3] = convW; wArray[] = convW;
+
+    motorMechanics XMov(convX,negX,convX,negX);
+    motorMechanics YMov(convY,convY,negY,negY);
+    static motorMechanics motorStrenghts = XMov + YMov;
 
     switch (convW > 0)
     {
@@ -177,7 +211,7 @@ void UART_ConvertMotor(DR16::RcData* rcdata,int motorCurrents[4]){
         break;
     }
 
-    motorStrenghts = motorStrenghts + motorMechanics({convW,convW,convW,convW});
+    motorStrenghts = motorStrenghts + motorMechanics(convW,convW,convW,convW);
     motorStrenghts.normalise(7920*1.5);
 
     motorStrenghts.cpyMotorVals(motorCurrents);
@@ -200,7 +234,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
     {
     case 0: case 1: case 2: case 3:
         if (status == HAL_OK){
-            wheels[index].update(RxData);
+            wheels[index].updateInfoFromCAN(RxData);
         }
         else{
             wheels.errorHandler();
@@ -208,7 +242,7 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
         break;
     case 4: case 5:
         if (status == HAL_OK){
-            arms[index].update(RxData);
+            arms[index].updateInfoFromCAN(RxData);
         }
         else{
             arms.errorHandler();
