@@ -135,24 +135,24 @@ namespace DJIMotor
 
 /* Callback functions and other supporting functions */
 
-void UART_ConvertMotor(DR16::RcData* rcdata,int motorVals[4]){
-    /*
-        Channel 0: determines the X axis and speed
-        Channel 1: determines the Y axis and speed
-        Channel 2: determines the direction of spin and speed of spin
+/*
+    Channel 0: determines the X axis and speed
+    Channel 1: determines the Y axis and speed
+    Channel 2: determines the direction of spin and speed of spin
 
-        There are 2 components which are calculated independently
-            - the cartesian motion
-            - the angular motion
-        
-        The way Cartesian motion will be achieved is by linearly adding x and y coordinate
+    There are 2 components which are calculated independently
+        - the cartesian motion
+        - the angular motion
+    
+    The way Cartesian motion will be achieved is by linearly adding x and y coordinate
 
-        for rotational motion the following things needs to be considered
-            - the degree of the x press and y press
-            - the degree of press of w and the direction
-        
-        after all of this, the strengths of the cartesian and rotation will be added 
-    */
+    for rotational motion the following things needs to be considered
+        - the degree of the x press and y press
+        - the degree of press of w and the direction
+    
+    after all of this, the strengths of the cartesian and rotation will be added 
+*/
+void UART_ConvertMotor(DR16::RcData* rcdata,int motorCurrents[4]){
 
     int x = rcdata->channel1;
     int y = rcdata->channel0;
@@ -180,7 +180,9 @@ void UART_ConvertMotor(DR16::RcData* rcdata,int motorVals[4]){
     motorStrenghts = motorStrenghts + motorMechanics({convW,convW,convW,convW});
     motorStrenghts.normalise(7920*1.5);
 
-    motorStrenghts.cpyMotorVals(motorVals);
+    motorStrenghts.cpyMotorVals(motorCurrents);
+
+    wheels.updateCurrents(motorCurrents);
     
 }
 

@@ -79,7 +79,7 @@ void CANTaskWheel(void *){
     {
         DR16::RcData uartSnapshot = *DR16::getRcData();
         DJIMotor::UART_ConvertMotor(&uartSnapshot,motorVals);
-        
+        DJIMotor::wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
         // x++;
         //uart convert current
         // 364~x~1684 -->  
