@@ -22,7 +22,6 @@
 
 #include "main.h"
 #include "stdint.h"
-#include "can.h"
 #include "PID.hpp"
 #include "DR16.hpp"
 
@@ -60,7 +59,7 @@ namespace DJIMotor
             DJIMotor(const int& ID);
             void updateInfoFromCAN(const uint8_t* rxBuffer);
             void updateTargetCurrent(const int rx);
-            void getValues(int16_t* container);
+            void getValues(int* container);
             int getPIDCurrent();
             int getCANID();
 

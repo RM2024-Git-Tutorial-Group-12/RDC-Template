@@ -33,7 +33,7 @@ namespace DJIMotor
         this->targetCurrent = TC;
     }
 
-    void DJIMotor::getValues(int16_t container[5]){
+    void DJIMotor::getValues(int container[5]){
         container[0] = mechanicalAngle;
         container[1] = rotationalSpeed;
         container[2] = current;
@@ -42,9 +42,9 @@ namespace DJIMotor
     }
 
     int DJIMotor::getPIDCurrent(){
-        int16_t information[5];
+        int information[5];
         getValues(information);
-        int16_t newCurrent = 3000;
+        int newCurrent = targetCurrent;
 
         /*Call the PID function*/
 
@@ -66,12 +66,12 @@ namespace DJIMotor
     }
 
     void MotorPair::transmit(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
-        static uint8_t txMessage[8] = {0};
+        uint8_t txMessage[8] = {0};
         uint32_t mailBox = 0;
         int offset = 0;
 
         for (int index = 0; index < size; index++){
-            uint8_t PIDCurrent = motor[index].getPIDCurrent();
+            uint16_t PIDCurrent = motor[index].getPIDCurrent();
             txMessage[index+offset] = PIDCurrent >> 8;
             txMessage[index+offset+1] = PIDCurrent;
             offset++;
@@ -166,7 +166,7 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,int motorCurrents[4],MotorPair
         motorCurrents[3] = -1*convX + -1*convY;
     }
 
-    normalise(motorCurrents,20000);
+    normalise(motorCurrents,(max(convX,-convX)+max(convY,-convY)+max(convW,-convW))); 
     pair.updateCurrents(motorCurrents);
 
 }

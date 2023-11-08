@@ -16,6 +16,7 @@
 #include "main.h"
 #include "task.h"  // Include task
 #include "semphr.h"
+#include "can.h"
 
 /*Allocate the stack for our PID task*/
 StackType_t DR16TaskStack[configMINIMAL_STACK_SIZE];
@@ -83,7 +84,7 @@ void CANTaskWheel(void *){
 
         DJIMotor::UART_ConvertMotor(uartSnapshot,motorVals,wheels);
         CAN_RxHeaderTypeDef RxHeader;
-        static uint8_t RxData[8];
+        uint8_t RxData[8];
 
         HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &RxHeader, RxData);
         if (status == HAL_OK){
