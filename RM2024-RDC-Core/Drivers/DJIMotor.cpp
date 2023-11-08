@@ -15,7 +15,7 @@ namespace DJIMotor
 
     DJIMotor::DJIMotor(const int& i){
         canID=0x200+i;
-        targetCurrent = 0;
+        convertedUART = 0;
         mechanicalAngle = 0;
         rotationalSpeed = 0;
         current = 0;
@@ -30,7 +30,7 @@ namespace DJIMotor
     }
 
     void DJIMotor::updateTargetCurrent(const int TC){
-        this->targetCurrent = TC;
+        this->convertedUART = TC;
     }
 
     void DJIMotor::getValues(int container[5]){
@@ -38,13 +38,13 @@ namespace DJIMotor
         container[1] = rotationalSpeed;
         container[2] = current;
         container[3] = motorTemperature;
-        container[4] = targetCurrent;
+        container[4] = convertedUART;
     }
 
     int DJIMotor::getPIDCurrent(){
         int information[5];
         getValues(information);
-        int newCurrent = targetCurrent;
+        int newCurrent = convertedUART;
 
         /*Call the PID function*/
 

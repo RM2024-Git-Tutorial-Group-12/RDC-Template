@@ -47,7 +47,7 @@ namespace DJIMotor
     {
         private:
             uint16_t canID;  // You need to assign motor's can ID for different motor
-            int targetCurrent;
+            int convertedUART;
 
             int mechanicalAngle;
             int rotationalSpeed;
@@ -113,6 +113,7 @@ namespace DJIMotor
     //     void matrixRotateLeft(); 
     //     void matrixRotateRight();
     // };
+
     int max(const int a, const int b);
     void normalise(int*,const int);
 /**
