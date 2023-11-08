@@ -44,7 +44,7 @@ namespace DJIMotor
     int DJIMotor::getPIDCurrent(){
         int16_t information[5];
         getValues(information);
-        int16_t newCurrent;
+        int16_t newCurrent = 3000;
 
         /*Call the PID function*/
 
@@ -66,12 +66,12 @@ namespace DJIMotor
     }
 
     void MotorPair::transmit(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
-        uint8_t txMessage[8] = {0};
+        static uint8_t txMessage[8] = {0};
         uint32_t mailBox = 0;
         int offset = 0;
 
         for (int index = 0; index < size; index++){
-            int16_t PIDCurrent = motor[index].getPIDCurrent();
+            uint8_t PIDCurrent = motor[index].getPIDCurrent();
             txMessage[index+offset] = PIDCurrent >> 8;
             txMessage[index+offset+1] = PIDCurrent;
             offset++;
@@ -97,10 +97,10 @@ namespace DJIMotor
 
     void MotorPair::init(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
         HAL_CAN_ConfigFilter(hcan, filter);
-        if (HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
-        {
-            errorHandler();
-        }
+        // if (HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
+        // {
+        //     errorHandler();
+        // }
     }
 
     void MotorPair::updateCurrents(const int NewCurrents[4]){
@@ -187,17 +187,17 @@ int max(const int a, const int b){
     return (a>b)?a:b;
 }
 
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan, MotorPair& pair){
-    CAN_RxHeaderTypeDef RxHeader;
-    uint8_t RxData[8];
+// void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan, MotorPair& pair){
+//     CAN_RxHeaderTypeDef RxHeader;
+//     static uint8_t RxData[8];
 
-    HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData);
+//     HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData);
 
-    int index = RxHeader.StdId - pair[0].getCANID();
-    pair[index].updateInfoFromCAN(RxData);
+//     int index = RxHeader.StdId - pair[0].getCANID();
+//     pair[index].updateInfoFromCAN(RxData);
 
-    HAL_CAN_ActivateNotification(hcan,CAN_IT_RX_FIFO0_MSG_PENDING);
-}
+//     // HAL_CAN_ActivateNotification(hcan,CAN_IT_RX_FIFO0_MSG_PENDING);
+// }
 
 /* end of the call functions and other supporting functions*/
 
