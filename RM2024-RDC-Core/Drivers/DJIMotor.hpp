@@ -22,7 +22,6 @@
 
 #include "main.h"
 #include "stdint.h"
-#include "can.h"
 #include "PID.hpp"
 #include "DR16.hpp"
 
@@ -48,21 +47,21 @@ namespace DJIMotor
     {
         private:
             uint16_t canID;  // You need to assign motor's can ID for different motor
-            int16_t targetCurrent;
+            int convertedUART;
 
-            int16_t mechanicalAngle;
-            int16_t rotationalSpeed;
-            int16_t current;
-            int16_t motorTemperature;
+            int mechanicalAngle;
+            int rotationalSpeed;
+            int current;
+            int motorTemperature;
 
             // control::PID motorPID; //uncomment the code once the PID has a proper constructor and then update DJIMotor accordingly
         public:
             DJIMotor(const int& ID);
             void updateInfoFromCAN(const uint8_t* rxBuffer);
             void updateTargetCurrent(const int rx);
-            void getValues(int16_t* container);
-            int16_t getPIDCurrent();
-            
+            void getValues(int* container);
+            int getPIDCurrent();
+            int getCANID();
 
         /*======================================================*/
         /**
@@ -94,31 +93,35 @@ namespace DJIMotor
             void updateCurrents(const int*);
     };
 
-    static MotorPair wheels = MotorPair(1,4);
-    static MotorPair arms = MotorPair(5,2);
-
-    struct motorMechanics{
+    class motorMechanics{
+        public:
+    
         int motor1;
         int motor2;
         int motor3;
         int motor4;
+
+        // motorMechanics(const int*);
         motorMechanics(const int, const int, const int, const int);
-        motorMechanics(int*);
-        void operator=(int*);
+
+        void operator=(const motorMechanics&);
+
         motorMechanics& operator+(const motorMechanics& values);
+        void operator=(const int*);
         void normalise(const int max);
         void cpyMotorVals(int*);
-        // the role of the following two functions is to help to have the idea of moving pivot and then rotating
+
         void matrixRotateLeft(); 
         void matrixRotateRight();
     };
+
+    int max(const int a, const int b);
+    void normalise(int*,const int);
 /**
  * @brief The whole motor's module initialization function
  * @note  You might initialize the CAN Module here
  * @retval
  */
-
-int max(const int a,const int b);
 
 /**
  * @brief The encoder getter fucntion
@@ -159,7 +162,7 @@ void setOutput(int16_t output);
  * @retval
  */
 void transmit(uint16_t header);
-void UART_ConvertMotor(const DR16::RcData&,int*);
+extern void UART_ConvertMotor(const DR16::RcData&,MotorPair&);
 /*===========================================================*/
 /**
  * @brief You can define your customized function here
@@ -174,7 +177,6 @@ accumulated position(orientation) of the motor
  * ..... And more .....
  *
 ============================================================*/
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan);
 
 
 /*===========================================================*/
