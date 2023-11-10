@@ -16,12 +16,21 @@
 #include "main.h"
 #include "task.h"  // Include task
 
+#include "semphr.h"
+#include "can.h"
+
 /*Allocate the stack for our PID task*/
 StackType_t DR16TaskStack[configMINIMAL_STACK_SIZE];
 // StackType_t testTaskStack[configMINIMAL_STACK_SIZE];
 /*Declare the PCB for our PID task*/
 StaticTask_t DR16TaskTCB;
-// StaticTask_t testTaskTCB;
+StaticTask_t CANWheelTaskTCB;
+// StaticTask_t CANArmTaskTCB;
+
+static DR16::RcData uartSnapshot;
+static DJIMotor::MotorPair wheels = DJIMotor::MotorPair(1,4);
+static DJIMotor::MotorPair arms = DJIMotor::MotorPair(5,2);
+
 
 /**
  * @todo Show your control outcome of the M3508 motor as follows
@@ -49,7 +58,7 @@ void DR16Communication(void *)
         }
         /* Your user layer codes in loop end here*/
         /*=================================================*/
-
+        uartSnapshot = *DR16::getRcData();
         vTaskDelay(1);  // Delay and block the task for 1ms.
     }
 }
@@ -58,11 +67,37 @@ void DR16Communication(void *)
  * @todo In case you like it, please implement your own tasks
  */
 
-void test(void *){
-    int x = 0;
+void CANTaskWheel(void *){
+    CAN_TxHeaderTypeDef txHeaderWheel = {TX_ID, 0, CAN_ID_STD, CAN_RTR_DATA, 8, DISABLE};
+    CAN_FilterTypeDef FilterWheel = {0x201 << 5, 0x202 << 5,0x203 << 5,0x204 << 5,
+                                        CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,
+                                        CAN_FILTER_ENABLE,0};
+
+    
+    wheels.init(&hcan,&txHeaderWheel,&FilterWheel);
+    int motorVals[4] = {0};
+
     while (true)
     {
-        x+=1;
+
+        DJIMotor::UART_ConvertMotor(uartSnapshot,wheels);
+
+        CAN_RxHeaderTypeDef RxHeader;
+        uint8_t RxData[8];
+        HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &RxHeader, RxData);
+        if (status == HAL_OK){
+            int index = RxHeader.StdId - wheels[0].getCANID();
+            wheels[index].updateInfoFromCAN(RxData);
+        }
+
+        wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
+
+        // x++;
+        //uart convert current
+        // 364~x~1684 -->  
+        // pass it 
+        /*The Wheel code*/
+        
         vTaskDelay(1);
     }
     
@@ -83,13 +118,13 @@ void startUserTasks()
                       1,
                       DR16TaskStack,
                       &DR16TaskTCB);  // Add the main task into the scheduler
-    // xTaskCreateStatic(test,
-    //                   "test ",
-    //                   configMINIMAL_STACK_SIZE,
-    //                   NULL,
-    //                   2,
-    //                   testTaskStack,
-    //                   &testTaskTCB); 
+//     xTaskCreateStatic(test,
+//                       "test ",
+//                       configMINIMAL_STACK_SIZE,
+//                       NULL,
+//                       2,
+//                       testTaskStack,
+//                       &testTaskTCB); 
     /**
      * @todo Add your own task here
     */
