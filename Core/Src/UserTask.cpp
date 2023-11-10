@@ -82,10 +82,10 @@ void CANTaskWheel(void *){
     while (true)
     {
 
-        DJIMotor::UART_ConvertMotor(uartSnapshot,motorVals,wheels);
+        DJIMotor::UART_ConvertMotor(uartSnapshot,wheels);
+
         CAN_RxHeaderTypeDef RxHeader;
         uint8_t RxData[8];
-
         HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &RxHeader, RxData);
         if (status == HAL_OK){
             int index = RxHeader.StdId - wheels[0].getCANID();

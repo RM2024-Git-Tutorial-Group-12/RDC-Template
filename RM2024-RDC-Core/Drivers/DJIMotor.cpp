@@ -9,12 +9,13 @@
 
 namespace DJIMotor
 {
-
+    
+    MotorPair arms = MotorPair(5,2);
 /* The Declarations of DJIMotor Class*/
 
     DJIMotor::DJIMotor(const int& i){
         canID=0x200+i;
-        targetCurrent = 0;
+        convertedUART = 0;
         mechanicalAngle = 0;
         rotationalSpeed = 0;
         current = 0;
@@ -28,26 +29,30 @@ namespace DJIMotor
         motorTemperature=rxMotorData[6];
     }
 
-    void DJIMotor::updateTargetCurrent(const int targetCurrent){
-        this->targetCurrent = targetCurrent;
+    void DJIMotor::updateTargetCurrent(const int TC){
+        this->convertedUART = TC;
     }
 
-    void DJIMotor::getValues(int16_t container[5]){
+    void DJIMotor::getValues(int container[5]){
         container[0] = mechanicalAngle;
         container[1] = rotationalSpeed;
         container[2] = current;
         container[3] = motorTemperature;
-        container[4] = targetCurrent;
+        container[4] = convertedUART;
     }
 
-    int16_t DJIMotor::getPIDCurrent(){
-        int16_t information[5];
+    int DJIMotor::getPIDCurrent(){
+        int information[5];
         getValues(information);
-        int16_t newCurrent;
+        int newCurrent = convertedUART;
 
         /*Call the PID function*/
 
         return newCurrent;
+    }
+
+    int DJIMotor::getCANID(){
+        return canID;
     }
 
 /* end of the declaration of DJIMotor class*/
@@ -66,7 +71,7 @@ namespace DJIMotor
         int offset = 0;
 
         for (int index = 0; index < size; index++){
-            int16_t PIDCurrent = motor[index].getPIDCurrent();
+            uint16_t PIDCurrent = motor[index].getPIDCurrent();
             txMessage[index+offset] = PIDCurrent >> 8;
             txMessage[index+offset+1] = PIDCurrent;
             offset++;
@@ -92,15 +97,15 @@ namespace DJIMotor
 
     void MotorPair::init(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
         HAL_CAN_ConfigFilter(hcan, filter);
-        if (HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
-        {
-            errorHandler();
-        }
+        // if (HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
+        // {
+        //     errorHandler();
+        // }
     }
 
-    void MotorPair::updateCurrents(const int NewCurrent[4]){
+    void MotorPair::updateCurrents(const int NewCurrents[4]){
         for (int index = 0; index < size; index++){
-            motor[index].updateTargetCurrent(NewCurrent[index]);
+            motor[index].updateTargetCurrent(NewCurrents[index]);
         }
     }
 
@@ -108,6 +113,58 @@ namespace DJIMotor
 
 /* Start of the declaration of motorMechanics */
 
+    motorMechanics motorMechanics::operator+(const motorMechanics& otherMatrix){
+        return motorMechanics(
+            motor1+otherMatrix.motor1,
+            motor2+otherMatrix.motor2,
+            motor3+otherMatrix.motor3,
+            motor4+otherMatrix.motor4
+        );
+    }
+
+    void motorMechanics::normalise(const int upperBound){
+        int total = max(motor1,-motor1) + max(motor2,-motor2) + max(motor3,-motor3) + max(motor4,-motor4);
+        motor1 = (motor1*upperBound)/total;
+        motor2 = (motor2*upperBound)/total;
+        motor3 = (motor3*upperBound)/total;
+        motor4 = (motor4*upperBound)/total;
+    }
+
+    void motorMechanics::cpyMotorVals(int container[4]){
+        container[0] = motor1; 
+        container[1] = motor2; 
+        container[2] = motor3; 
+        container[3] = motor4;
+    }
+
+    motorMechanics::motorMechanics(const int a, const int b, const int c, const int d){
+        motor1 = a;
+        motor2 = b;
+        motor3 = c;
+        motor4 = d;
+    }
+
+    // motorMechanics::motorMechanics(const int motorVals[4]){
+    //     motor1 = motorVals[0];
+    //     motor2 = motorVals[1];
+    //     motor3 = motorVals[2];
+    //     motor4 = motorVals[3];
+    // }
+
+    void motorMechanics::operator=(const motorMechanics& motorMatrix){
+        motor1 = motorMatrix.motor1;
+        motor2 = motorMatrix.motor2;
+        motor3 = motorMatrix.motor3;
+        motor4 = motorMatrix.motor4;
+    }
+
+    void motorMechanics::matrixRotateLeft(){
+        *this = motorMechanics(motor2,motor4,motor1,motor3);
+    }
+
+    void motorMechanics::matrixRotateRight(){
+        *this = motorMechanics(motor3,motor1,motor4,motor2);
+    }
 /* end of the declaration of the motorMechanics*/
 
 /* Callback functions and other supporting functions */
@@ -129,6 +186,41 @@ namespace DJIMotor
     
     after all of this, the strengths of the cartesian and rotation will be added 
 */
+void UART_ConvertMotor(const DR16::RcData& RCdata,MotorPair& wheels){
+
+    const int x = RCdata.channel1;
+    const int y = RCdata.channel0;
+    const int w = RCdata.channel2;
+
+    // a contrained limit of 7920 has been set, which can be changed later
+
+    const int convX = ((x-364)*8-5280); 
+    const int convY = ((y-364)*8-5280);
+    int multiple = (convX && convY)?2:1;
+    const int convW = ((w-364)*8-5280) * multiple;
+
+    motorMechanics xMov({convX,-convX,convX,-convX});
+    motorMechanics yMov({convY,convY,-convY,-convY});
+    motorMechanics wMov({convW,convW,convW,convW});
+
+    motorMechanics linearMov = xMov + yMov;
+    if (convW >= 0){
+        linearMov.matrixRotateLeft();
+    }
+    if (convW <= 0){
+        linearMov.matrixRotateRight();
+    }
+    linearMov = linearMov + wMov;
+    linearMov.normalise(
+        max(convX,-convX)+
+        max(convY,-convY)+
+        max(convW,-convW)
+    );
+    int motorCurrents[4] = {0};
+    linearMov.cpyMotorVals(motorCurrents);
+    wheels.updateCurrents(motorCurrents);
+    
+}
 
 void normalise(int values[4], const int upperVal){
     int total = 0;
@@ -144,37 +236,6 @@ void normalise(int values[4], const int upperVal){
 
 int max(const int a, const int b){
     return (a>b)?a:b;
-}
-
-void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan){
-    CAN_RxHeaderTypeDef RxHeader;
-    uint8_t RxData[8];
-    HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RxHeader, RxData);
-    int index = RxHeader.StdId - 0x200;
-
-    switch (index)
-    {
-    case 0: case 1: case 2: case 3:
-        if (status == HAL_OK){
-            wheels[index].updateInfoFromCAN(RxData);
-        }
-        else{
-            wheels.errorHandler();
-        }
-        break;
-    case 4: case 5:
-        if (status == HAL_OK){
-            arms[index].updateInfoFromCAN(RxData);
-        }
-        else{
-            arms.errorHandler();
-        }
-        break;
-    default:
-        return;
-    }
-
-    HAL_CAN_ActivateNotification(hcan,CAN_IT_RX_FIFO0_MSG_PENDING);
 }
 
 /* end of the call functions and other supporting functions*/
