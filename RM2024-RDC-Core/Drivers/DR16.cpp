@@ -29,7 +29,7 @@ bool abnormal = false;
 
 void CallBackFunc(UART_HandleTypeDef* huart, uint16_t s){
     decodeAndValidate(rxBuffer);
-    HAL_UARTEx_ReceiveToIdle_IT(&huart1,rxBuffer,18);
+    HAL_UARTEx_ReceiveToIdle_IT(&DR16_UART,rxBuffer,18);
 }
 
 void errorHandler(){
@@ -72,8 +72,8 @@ void decodeAndValidate(uint8_t rxBuffer[]){
 /*================================================================================*/
 void init()
 {
-    if (!HAL_UART_RegisterRxEventCallback(&huart1,CallBackFunc)){
-        HAL_UARTEx_ReceiveToIdle_IT(&huart1,rxBuffer,18);
+    if (!HAL_UART_RegisterRxEventCallback(&DR16_UART,CallBackFunc)){
+        HAL_UARTEx_ReceiveToIdle_IT(&DR16_UART,rxBuffer,18);
     }
     
 }

@@ -22,9 +22,14 @@
 
 #include "main.h"
 #include "stdint.h"
+#include "PID.hpp"
+#include "DR16.hpp"
 
 namespace DJIMotor
 {
+
+    #define TX_ID 0x200
+    #define EX_TX_ID 0x1FF
 
 /**
  * @brief A motor's handle. We do not require you to master the cpp class
@@ -36,41 +41,87 @@ namespace DJIMotor
  * and instantiate them with different parameters
  * @brief Instead of copy and paste your codes for four times
  * @brief This is what we really appreiciate in our programming
- */
-class DJIMotor
-{
-    private:
-        uint16_t canID;  // You need to assign motor's can ID for different motor
-                     // instance
-        uint16_t rotation;
-        uint16_t speed;
-        uint16_t current;
-        uint16_t temp;
-    public:
-        DJIMotor(const int& i);
-        float getEncoder(uint16_t canID);
-        float getRPM(uint16_t canID);
-    /*======================================================*/
-    /**
-     * @brief Your self-defined variables are defined here
-     * @note  Please refer to the GM6020, M3508 motor's user manual that we have
-     * released on the Google Drive
-     * @example:
-     
-     * uint16_t encoder;
-     * uint16_t rpm;
-     * float orientation; //  get the accumulated orientation of the motor
-     * ......
-     */
-    /*=======================================================*/
-};
+ */ 
 
+    class DJIMotor
+    {
+        private:
+            uint16_t canID;  // You need to assign motor's can ID for different motor
+            int convertedUART;
+
+            int mechanicalAngle;
+            int rotationalSpeed;
+            int current;
+            int motorTemperature;
+
+            // control::PID motorPID; //uncomment the code once the PID has a proper constructor and then update DJIMotor accordingly
+        public:
+            DJIMotor(const int& ID);
+            void updateInfoFromCAN(const uint8_t* rxBuffer);
+            void updateTargetCurrent(const int rx);
+            void getValues(int* container);
+            int getPIDCurrent();
+            int getCANID();
+
+        /*======================================================*/
+        /**
+         * @brief Your self-defined variables are defined here
+         * @note  Please refer to the GM6020, M3508 motor's user manual that we have
+         * released on the Google Drive
+         * @example:
+         
+        * uint16_t encoder;
+        * uint16_t rpm;
+        * float orientation; //  get the accumulated orientation of the motor
+        * ......
+        */
+
+        
+        /*=======================================================*/
+    };
+
+    class MotorPair{
+        private:
+            DJIMotor motor[4];
+            int size;
+        public:
+            MotorPair(const int IDStart, const int s);
+            void transmit(CAN_HandleTypeDef*,CAN_TxHeaderTypeDef*,CAN_FilterTypeDef*);
+            void errorHandler();
+            DJIMotor& operator[](const int);
+            void init(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter);
+            void updateCurrents(const int*);
+    };
+
+    class motorMechanics{
+        public:
+    
+        int motor1;
+        int motor2;
+        int motor3;
+        int motor4;
+
+        // motorMechanics(const int*);
+        motorMechanics(const int, const int, const int, const int);
+
+        void operator=(const motorMechanics&);
+
+        motorMechanics operator+(const motorMechanics& values);
+        void operator=(const int*);
+        void normalise(const int max);
+        void cpyMotorVals(int*);
+
+        void matrixRotateLeft(); 
+        void matrixRotateRight();
+    };
+
+    int max(const int a, const int b);
+    void normalise(int*,const int);
 /**
  * @brief The whole motor's module initialization function
  * @note  You might initialize the CAN Module here
  * @retval
  */
-void init();
 
 /**
  * @brief The encoder getter fucntion
@@ -111,7 +162,7 @@ void setOutput(int16_t output);
  * @retval
  */
 void transmit(uint16_t header);
-
+extern void UART_ConvertMotor(const DR16::RcData&,MotorPair&);
 /*===========================================================*/
 /**
  * @brief You can define your customized function here
@@ -126,9 +177,6 @@ accumulated position(orientation) of the motor
  * ..... And more .....
  *
 ============================================================*/
-
-
-
 
 
 /*===========================================================*/
