@@ -73,12 +73,11 @@ void CANTaskWheel(void *){
 
     
     wheels.init(&hcan,&txHeaderWheel,&FilterWheel);
-    int motorVals[4] = {0};
 
     while (true)
     {
 
-        DJIMotor::UART_ConvertMotor(uartSnapshot,motorVals,wheels);
+        DJIMotor::UART_ConvertMotor(uartSnapshot,wheels);
         CAN_RxHeaderTypeDef RxHeader;
         uint8_t RxData[8];
 
@@ -121,7 +120,7 @@ void startUserTasks()
                       "CANTaskWheel ",
                       configMINIMAL_STACK_SIZE,
                       NULL,
-                      2,
+                      1,
                       CANWheelTaskStack,
                       &CANWheelTaskTCB); 
     /**
