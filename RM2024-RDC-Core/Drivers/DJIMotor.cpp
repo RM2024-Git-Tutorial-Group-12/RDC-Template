@@ -129,36 +129,6 @@ namespace DJIMotor
     
     after all of this, the strengths of the cartesian and rotation will be added 
 */
-void UART_ConvertMotor(const DR16::RcData& RCdata,int motorCurrents[4]){
-
-    const int x = RCdata.channel1;
-    const int y = RCdata.channel0;
-    const int w = RCdata.channel2;
-
-    // a contrained limit of 7920 has been set, which can be changed later
-
-    const int convX = ((x-364)*8-5280); 
-    const int convY = ((y-364)*8-5280);
-    int multiple = (convX && convY)?2:1;
-    const int convW = ((w-364)*8-5280) * multiple;
-
-    if (convW){
-        motorCurrents[0] = -1*convX + convY + convW;
-        motorCurrents[1] = -1*convX + -1*convY + convW;
-        motorCurrents[2] = convX + convY + convW;
-        motorCurrents[3] = convX + -1*convY + convW;
-    }
-    else{
-        motorCurrents[0] = convX + convY;
-        motorCurrents[2] = -1*convX + convY;
-        motorCurrents[1] = convX + -1*convY;
-        motorCurrents[3] = -1*convX + -1*convY;
-    }
-
-    normalise(motorCurrents,20000);
-    wheels.updateCurrents(motorCurrents);
-    
-}
 
 void normalise(int values[4], const int upperVal){
     int total = 0;
