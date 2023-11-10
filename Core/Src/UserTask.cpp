@@ -30,8 +30,6 @@ StaticTask_t CANWheelTaskTCB;
 static DR16::RcData uartSnapshot;
 static DJIMotor::MotorPair wheels = DJIMotor::MotorPair(1,4);
 static DJIMotor::MotorPair arms = DJIMotor::MotorPair(5,2);
-
-
 /**
  * @todo Show your control outcome of the M3508 motor as follows
  */
@@ -80,10 +78,10 @@ void CANTaskWheel(void *){
     while (true)
     {
 
-        DJIMotor::UART_ConvertMotor(uartSnapshot,wheels);
-
+        DJIMotor::UART_ConvertMotor(uartSnapshot,motorVals,wheels);
         CAN_RxHeaderTypeDef RxHeader;
         uint8_t RxData[8];
+
         HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &RxHeader, RxData);
         if (status == HAL_OK){
             int index = RxHeader.StdId - wheels[0].getCANID();

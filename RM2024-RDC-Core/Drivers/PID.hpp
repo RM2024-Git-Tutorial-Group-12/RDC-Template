@@ -18,13 +18,18 @@
 namespace Control
 {
 
+    /*
+        - motor, we need to control the speed,
+        - arm, we would have to control the rotation.
+    */
+
 class PID
 {
    public:
     /**
      * @brief Delete the default constructor.
      */
-    PID() = delete;
+    PID(){};
 
     /**
      * @brief Constructor function
