@@ -106,7 +106,7 @@ namespace DJIMotor
 
         void operator=(const motorMechanics&);
 
-        motorMechanics& operator+(const motorMechanics& values);
+        motorMechanics operator+(const motorMechanics& values);
         void operator=(const int*);
         void normalise(const int max);
         void cpyMotorVals(int*);

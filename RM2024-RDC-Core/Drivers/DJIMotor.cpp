@@ -113,12 +113,13 @@ namespace DJIMotor
 
 /* Start of the declaration of motorMechanics */
 
-    motorMechanics& motorMechanics::operator+(const motorMechanics& otherMatrix){
-        motor1 += otherMatrix.motor1;
-        motor2 += otherMatrix.motor2;
-        motor3 += otherMatrix.motor3;
-        motor4 += otherMatrix.motor4;
-        return *this;
+    motorMechanics motorMechanics::operator+(const motorMechanics& otherMatrix){
+        return motorMechanics(
+            motor1+otherMatrix.motor1,
+            motor2+otherMatrix.motor2,
+            motor3+otherMatrix.motor3,
+            motor4+otherMatrix.motor4
+        );
     }
 
     void motorMechanics::normalise(const int upperBound){
