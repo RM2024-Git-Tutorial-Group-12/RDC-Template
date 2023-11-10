@@ -21,7 +21,7 @@
 
 /*Allocate the stack for our PID task*/
 StackType_t DR16TaskStack[configMINIMAL_STACK_SIZE];
-// StackType_t testTaskStack[configMINIMAL_STACK_SIZE];
+StackType_t CANWheelTaskStack[configMINIMAL_STACK_SIZE];
 /*Declare the PCB for our PID task*/
 StaticTask_t DR16TaskTCB;
 StaticTask_t CANWheelTaskTCB;
@@ -111,6 +111,7 @@ void CANTaskWheel(void *){
 void startUserTasks()
 {
     DR16::init();
+    HAL_CAN_Start(&hcan);
     xTaskCreateStatic(DR16Communication,
                       "DR16_Communication ",
                       configMINIMAL_STACK_SIZE,
@@ -118,13 +119,13 @@ void startUserTasks()
                       1,
                       DR16TaskStack,
                       &DR16TaskTCB);  // Add the main task into the scheduler
-//     xTaskCreateStatic(test,
-//                       "test ",
-//                       configMINIMAL_STACK_SIZE,
-//                       NULL,
-//                       2,
-//                       testTaskStack,
-//                       &testTaskTCB); 
+    xTaskCreateStatic(CANTaskWheel,
+                      "CANTaskWheel ",
+                      configMINIMAL_STACK_SIZE,
+                      NULL,
+                      2,
+                      CANWheelTaskStack,
+                      &CANWheelTaskTCB); 
     /**
      * @todo Add your own task here
     */
