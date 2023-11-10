@@ -123,7 +123,7 @@ void startUserTasks()
                       "CANTaskWheel ",
                       configMINIMAL_STACK_SIZE,
                       NULL,
-                      2,
+                      1,
                       CANWheelTaskStack,
                       &CANWheelTaskTCB); 
     /**
