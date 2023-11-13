@@ -28,7 +28,8 @@ StaticTask_t CANWheelTaskTCB;
 // StaticTask_t CANArmTaskTCB;
 
 static DR16::RcData uartSnapshot;
-static DJIMotor::MotorPair wheels = DJIMotor::MotorPair(1,4);
+const float PID[4][3] = {{0.5,0,0},{1,0,0},{1,0,0},{1,0,0}};
+static DJIMotor::MotorPair wheels = DJIMotor::MotorPair(1,4,PID);
 static DJIMotor::MotorPair arms = DJIMotor::MotorPair(5,2);
 /**
  * @todo Show your control outcome of the M3508 motor as follows
@@ -76,7 +77,6 @@ void CANTaskWheel(void *){
 
     while (true)
     {
-
         DJIMotor::UART_ConvertMotor(uartSnapshot,wheels);
         CAN_RxHeaderTypeDef RxHeader;
         uint8_t RxData[8];

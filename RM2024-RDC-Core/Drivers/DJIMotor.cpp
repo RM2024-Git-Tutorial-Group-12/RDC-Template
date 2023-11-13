@@ -67,7 +67,8 @@ namespace DJIMotor
     ){
         size = numberOfMotors;
     }
-    MotorPair::MotorPair(const int IDStart, const int numberOfMotors,const float** pid):motor(
+
+    MotorPair::MotorPair(const int IDStart, const int numberOfMotors, const float pid[][3]):motor(
         {DJIMotor(IDStart),DJIMotor(IDStart+1),DJIMotor(IDStart+2),DJIMotor(IDStart+3)}
     ){
         size=numberOfMotors;
