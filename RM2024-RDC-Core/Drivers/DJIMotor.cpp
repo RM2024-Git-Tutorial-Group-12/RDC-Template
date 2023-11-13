@@ -20,13 +20,14 @@ namespace DJIMotor
         rotationalSpeed = 0;
         current = 0;
         motorTemperature = 25;
+        lastUpdated = 0;
     }
 
     void DJIMotor::updateInfoFromCAN(const uint8_t rxMotorData[8]){
-        mechanicalAngle=rxMotorData[0] <<8 | rxMotorData[1];
-        rotationalSpeed=rxMotorData[2] <<8 | rxMotorData[3];
-        current=rxMotorData[4] <<8 | rxMotorData[5];
-        motorTemperature=rxMotorData[6];
+        mechanicalAngle = rxMotorData[0] <<8 | rxMotorData[1];
+        rotationalSpeed = rxMotorData[2] <<8 | rxMotorData[3];
+        current = rxMotorData[4] <<8 | rxMotorData[5];
+        motorTemperature = rxMotorData[6];
     }
 
     void DJIMotor::updateTargetCurrent(const int TC){
@@ -42,11 +43,11 @@ namespace DJIMotor
     }
 
     int DJIMotor::getPIDCurrent(){
-        int information[5];
-        getValues(information);
-        int newCurrent = convertedUART;
+        float newCurrent;
+        ticks currentTime = HAL_GetTick();
+        newCurrent = motorPID.update(convertedUART,rotationalSpeed,currentTime-lastUpdated) + current;
 
-        /*Call the PID function*/
+        lastUpdated = currentTime;
 
         return newCurrent;
     }
@@ -54,7 +55,9 @@ namespace DJIMotor
     int DJIMotor::getCANID(){
         return canID;
     }
-
+    void DJIMotor::setPID(const float* pid){
+        motorPID = Control::PID{pid[0],pid[1],pid[2]};
+    }
 /* end of the declaration of DJIMotor class*/
 
 /* Start of the declaration of MotorPair class */
@@ -63,6 +66,15 @@ namespace DJIMotor
         {DJIMotor(IDStart),DJIMotor(IDStart+1),DJIMotor(IDStart+2),DJIMotor(IDStart+3)}
     ){
         size = numberOfMotors;
+    }
+    MotorPair::MotorPair(const int IDStart, const int numberOfMotors,const float** pid):motor(
+        {DJIMotor(IDStart),DJIMotor(IDStart+1),DJIMotor(IDStart+2),DJIMotor(IDStart+3)}
+    ){
+        size=numberOfMotors;
+        for (int i=0;i<size;i++){
+            motor[i].DJIMotor::setPID(pid[i]);
+        }
+           
     }
 
     void MotorPair::transmit(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
@@ -78,29 +90,22 @@ namespace DJIMotor
         }
 
         if (HAL_CAN_AddTxMessage(hcan, header, txMessage, &mailBox) != HAL_OK){
-            errorHandler();
+            errorHandler(hcan,header,filter);
         }
     }
 
-    void MotorPair::errorHandler(){
-        /* 
-            - either we can make the motor completely stop which could be more safe
-            - or we could possibly possibly just pass the last 
-            
-            @todo we can consider to do this aftr implementing the PID class
-        */
+    void MotorPair::errorHandler(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
+        uint8_t txMessage[8] = {0};
+        uint32_t mailBox = 0;
+        HAL_CAN_AddTxMessage(hcan, header, txMessage, &mailBox);
     }
 
     DJIMotor& MotorPair::operator[](const int index){
         return motor[index];
     }
 
-    void MotorPair::init(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
+    void MotorPair::init(CAN_HandleTypeDef* hcan,CAN_FilterTypeDef* filter){
         HAL_CAN_ConfigFilter(hcan, filter);
-        // if (HAL_CAN_ActivateNotification(hcan, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
-        // {
-        //     errorHandler();
-        // }
     }
 
     void MotorPair::updateCurrents(const int NewCurrents[4]){
@@ -112,30 +117,6 @@ namespace DJIMotor
 /* end of the declaration of the MotorPair class*/
 
 /* Start of the declaration of motorMechanics */
-
-    motorMechanics motorMechanics::operator+(const motorMechanics& otherMatrix){
-        return motorMechanics(
-            motor1+otherMatrix.motor1,
-            motor2+otherMatrix.motor2,
-            motor3+otherMatrix.motor3,
-            motor4+otherMatrix.motor4
-        );
-    }
-
-    void motorMechanics::normalise(const int upperBound){
-        int total = max(motor1,-motor1) + max(motor2,-motor2) + max(motor3,-motor3) + max(motor4,-motor4);
-        motor1 = (motor1*upperBound)/total;
-        motor2 = (motor2*upperBound)/total;
-        motor3 = (motor3*upperBound)/total;
-        motor4 = (motor4*upperBound)/total;
-    }
-
-    void motorMechanics::cpyMotorVals(int container[4]){
-        container[0] = motor1; 
-        container[1] = motor2; 
-        container[2] = motor3; 
-        container[3] = motor4;
-    }
 
     motorMechanics::motorMechanics(const int a, const int b, const int c, const int d){
         motor1 = a;
@@ -158,6 +139,24 @@ namespace DJIMotor
         motor4 = motorMatrix.motor4;
     }
 
+    motorMechanics motorMechanics::operator+(const motorMechanics& otherMatrix){
+        return motorMechanics(
+            motor1+otherMatrix.motor1,
+            motor2+otherMatrix.motor2,
+            motor3+otherMatrix.motor3,
+            motor4+otherMatrix.motor4
+        );
+    }
+
+    // motorMechanics motorMechanics::operator*(const int& multiplier){
+    //     return motorMechanics(
+    //         motor1*multiplier,
+    //         motor2*multiplier,
+    //         motor3*multiplier,
+    //         motor4*multiplier
+    //     );
+    // }
+
     void motorMechanics::matrixRotateLeft(){
         *this = motorMechanics(motor2,motor4,motor1,motor3);
     }
@@ -165,6 +164,27 @@ namespace DJIMotor
     void motorMechanics::matrixRotateRight(){
         *this = motorMechanics(motor3,motor1,motor4,motor2);
     }
+
+    void motorMechanics::normalise(const int upperBound){
+        float total = sqrt(
+            motor1*motor1+
+            motor2*motor2+
+            motor3*motor3+
+            motor4*motor4
+        );
+        motor1 = (motor1*upperBound)/total;
+        motor2 = (motor2*upperBound)/total;
+        motor3 = (motor3*upperBound)/total;
+        motor4 = (motor4*upperBound)/total;
+    }
+
+    void motorMechanics::cpyMotorVals(int container[4]){
+        container[0] = motor1; 
+        container[1] = motor2; 
+        container[2] = motor3; 
+        container[3] = motor4;
+    }
+
 /* end of the declaration of the motorMechanics*/
 
 /* Callback functions and other supporting functions */
@@ -212,30 +232,28 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,MotorPair& pair){
         linearMov.matrixRotateRight();
     }
     linearMov = linearMov + wMov;
-    linearMov.normalise(
+    linearMov.normalise((
         max(convX,-convX)+
         max(convY,-convY)+
         max(convW,-convW)
-    );
+    )*1.3);
     int motorCurrents[4] = {0};
     linearMov.cpyMotorVals(motorCurrents);
     pair.updateCurrents(motorCurrents);
 }
 
-void normalise(int values[4], const int upperVal){
-    int total = 0;
-    for (int i = 0; i < 4; i++){
-        if (values[i] > 0){total+=values[i];}
-        else{total += (-1*values[i]);}
-    }
-    for (int i = 0; i < 4; i++){
-        values[i] *= upperVal;
-        values[i] /= total;
-    }
-}
-
 int max(const int a, const int b){
     return (a>b)?a:b;
+}
+
+double sqrt(double square)
+{
+    double root=square/3;
+    int i;
+    if (square <= 0) return 0;
+    for (i=0; i<32; i++)
+        root = (root + square / root) / 2;
+    return root;
 }
 
 /* end of the call functions and other supporting functions*/

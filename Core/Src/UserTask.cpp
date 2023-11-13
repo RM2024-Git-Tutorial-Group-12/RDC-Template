@@ -72,7 +72,7 @@ void CANTaskWheel(void *){
                                         CAN_FILTER_ENABLE,0};
 
     
-    wheels.init(&hcan,&txHeaderWheel,&FilterWheel);
+    wheels.init(&hcan,&FilterWheel);
 
     while (true)
     {
@@ -88,12 +88,6 @@ void CANTaskWheel(void *){
         }
 
         wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
-
-        // x++;
-        //uart convert current
-        // 364~x~1684 -->  
-        // pass it 
-        /*The Wheel code*/
         
         vTaskDelay(1);
     }

@@ -9,6 +9,18 @@ float PID::update(float target, float measurement, float dt)
     /*=====================================================================*/
     // Your implementation of the PID algorithm begins here
     /*=====================================================================*/
+    
+    error = target - measurement;  // error = target - current
+
+    pOut = Kp * error;  // pOut = Kp * error
+
+    iOut += Ki * error * dt;  // iOut = integral(Ki * error)
+
+    dOut = Kd * (error - lastError) / dt;  // dOut = derivative(Kd * error)
+
+    output = pOut + iOut + dOut;  // output = pOut + iOut + dOut
+
+    lastError = error;
 
     /*=====================================================================*/
     // Your implementation of the PID algorithm ends here

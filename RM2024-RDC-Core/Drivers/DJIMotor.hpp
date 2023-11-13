@@ -24,13 +24,14 @@
 #include "stdint.h"
 #include "PID.hpp"
 #include "DR16.hpp"
+#include "PID.hpp"
 
 namespace DJIMotor
 {
 
     #define TX_ID 0x200
     #define EX_TX_ID 0x1FF
-
+    typedef unsigned int ticks;
 /**
  * @brief A motor's handle. We do not require you to master the cpp class
  * syntax.
@@ -54,11 +55,16 @@ namespace DJIMotor
             int current;
             int motorTemperature;
 
-            // control::PID motorPID; //uncomment the code once the PID has a proper constructor and then update DJIMotor accordingly
+            Control::PID motorPID{1,0,0}; //uncomment the code once the PID has a proper constructor and then update DJIMotor accordingly
+            ticks lastUpdated;
+
         public:
             DJIMotor(const int& ID);
+
             void updateInfoFromCAN(const uint8_t* rxBuffer);
             void updateTargetCurrent(const int rx);
+            void setPID(const float*);
+
             void getValues(int* container);
             int getPIDCurrent();
             int getCANID();
@@ -86,10 +92,12 @@ namespace DJIMotor
             int size;
         public:
             MotorPair(const int IDStart, const int s);
+            MotorPair(const int IDStart,const int s, const float** pid);
+
             void transmit(CAN_HandleTypeDef*,CAN_TxHeaderTypeDef*,CAN_FilterTypeDef*);
-            void errorHandler();
+            void errorHandler(CAN_HandleTypeDef*,CAN_TxHeaderTypeDef*,CAN_FilterTypeDef*);
             DJIMotor& operator[](const int);
-            void init(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter);
+            void init(CAN_HandleTypeDef* hcan,CAN_FilterTypeDef* filter);
             void updateCurrents(const int*);
     };
 
@@ -103,20 +111,20 @@ namespace DJIMotor
 
         // motorMechanics(const int*);
         motorMechanics(const int, const int, const int, const int);
-
         void operator=(const motorMechanics&);
+        // void operator=(const int*);
 
-        motorMechanics operator+(const motorMechanics& values);
-        void operator=(const int*);
+        motorMechanics operator+(const motorMechanics& matrix);
+        motorMechanics operator*(const int& matrix);
+        void matrixRotateLeft(); 
+        void matrixRotateRight();
+
         void normalise(const int max);
         void cpyMotorVals(int*);
 
-        void matrixRotateLeft(); 
-        void matrixRotateRight();
     };
 
     int max(const int a, const int b);
-    void normalise(int*,const int);
 /**
  * @brief The whole motor's module initialization function
  * @note  You might initialize the CAN Module here
@@ -177,7 +185,7 @@ accumulated position(orientation) of the motor
  * ..... And more .....
  *
 ============================================================*/
-
+double sqrt(double);
 
 /*===========================================================*/
 }  // namespace DJIMotor
