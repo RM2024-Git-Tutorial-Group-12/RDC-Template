@@ -15,8 +15,6 @@
 #include "PID.hpp"     // Include PID
 #include "main.h"
 #include "task.h"  // Include task
-
-#include "semphr.h"
 #include "can.h"
 
 /*Allocate the stack for our PID task*/
@@ -28,7 +26,7 @@ StaticTask_t CANWheelTaskTCB;
 // StaticTask_t CANArmTaskTCB;
 
 static DR16::RcData uartSnapshot;
-const float PID[4][3] = {{0.5,0,0},{1,0,0},{1,0,0},{1,0,0}};
+const float PID[4][3] = {{1,0,0.05},{1,0,0.05},{1,0,0.05},{1,0,0.05}};
 static DJIMotor::MotorPair wheels = DJIMotor::MotorPair(1,4,PID);
 static DJIMotor::MotorPair arms = DJIMotor::MotorPair(5,2);
 /**
@@ -78,14 +76,15 @@ void CANTaskWheel(void *){
     while (true)
     {
         DJIMotor::UART_ConvertMotor(uartSnapshot,wheels);
-        CAN_RxHeaderTypeDef RxHeader;
-        uint8_t RxData[8];
-
-        HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &RxHeader, RxData);
-        if (status == HAL_OK){
-            int index = RxHeader.StdId - wheels[0].getCANID();
-            wheels[index].updateInfoFromCAN(RxData);
-        }
+        
+        // if (HAL_CAN_GetRxFifoFillLevel(&hcan,CAN_RX_FIFO0)){
+            uint8_t RxData[8];
+            CAN_RxHeaderTypeDef RxHeader;
+            if (HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &RxHeader, RxData) == HAL_OK){
+                int index = RxHeader.StdId - wheels[0].getCANID();
+                wheels[index].updateInfoFromCAN(RxData);
+            }
+        // }
 
         wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
         

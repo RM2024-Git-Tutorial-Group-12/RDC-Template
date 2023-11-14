@@ -17,7 +17,8 @@ namespace DR16
 static RcData rcData;
 
 /*Return the constant pointer of the current decoded data*/
-const RcData *getRcData() { return &rcData; }
+const RcData *getRcData() { 
+    return &rcData; }
 
 /*================================================================================*/
 /*You are free to declare your buffer, or implement your own function(callback, decoding) here*/

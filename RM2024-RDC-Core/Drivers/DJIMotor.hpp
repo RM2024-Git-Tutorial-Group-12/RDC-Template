@@ -186,7 +186,7 @@ accumulated position(orientation) of the motor
  *
 ============================================================*/
 double sqrt(double);
-
+double abs(double x);
 /*===========================================================*/
 }  // namespace DJIMotor
 #endif  // USE_DJI_MOTOR

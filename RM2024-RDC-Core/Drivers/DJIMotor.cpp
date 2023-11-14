@@ -26,8 +26,8 @@ namespace DJIMotor
     void DJIMotor::updateInfoFromCAN(const uint8_t rxMotorData[8]){
         mechanicalAngle = rxMotorData[0] <<8 | rxMotorData[1];
         rotationalSpeed = rxMotorData[2] <<8 | rxMotorData[3];
-        current = rxMotorData[4] <<8 | rxMotorData[5];
-        motorTemperature = rxMotorData[6];
+        current =         rxMotorData[4] <<8 | rxMotorData[5];
+        motorTemperature= rxMotorData[6];
     }
 
     void DJIMotor::updateTargetCurrent(const int TC){
@@ -45,8 +45,20 @@ namespace DJIMotor
     int DJIMotor::getPIDCurrent(){
         float newCurrent;
         ticks currentTime = HAL_GetTick();
-        newCurrent = motorPID.update(convertedUART,rotationalSpeed,currentTime-lastUpdated) + current;
+        if (current > 16384){
+            current = 16384;
+        }
+        else if (current < -16384){
+            current = -16384;
+        }
+        newCurrent = motorPID.update(convertedUART,current,currentTime-lastUpdated) + current;
 
+        if (newCurrent > 16384){
+            newCurrent = 16384;
+        }
+        else if (newCurrent < -16384){
+            newCurrent = -16384;
+        }
         lastUpdated = currentTime;
 
         return newCurrent;
@@ -166,7 +178,11 @@ namespace DJIMotor
         *this = motorMechanics(motor3,motor1,motor4,motor2);
     }
 
+//  if the value is between -12k to 12k, then it is left as it is, otherwise, it is scaled according to others.
+//  if all motors are less than |12k|, then do nothing,
+//  otherwise normalise it and then multiply by 12k
     void motorMechanics::normalise(const int upperBound){
+        float max = 0;
         float total = sqrt(
             motor1*motor1+
             motor2*motor2+
@@ -177,6 +193,16 @@ namespace DJIMotor
         motor2 = (motor2*upperBound)/total;
         motor3 = (motor3*upperBound)/total;
         motor4 = (motor4*upperBound)/total;
+        int temp[4] = {motor1,motor2,motor3,motor4};
+        for (int i=0;i<4;i++){
+            if (abs(temp[i])>12000 & abs(temp[i])>max) max = abs(temp[i]);
+        }
+        if (max>0) {
+            motor1 = motor1 * 12000 / max;
+            motor2 = motor2 * 12000 / max;
+            motor3 = motor3 * 12000 / max;
+            motor4 = motor4 * 12000 / max;
+        } 
     }
 
     void motorMechanics::cpyMotorVals(int container[4]){
@@ -212,9 +238,9 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,MotorPair& pair){
     const int x = RCdata.channel1;
     const int y = RCdata.channel0;
     const int w = RCdata.channel2;
+    if (!x || !y || !w){return;}
 
     // a contrained limit of 7920 has been set, which can be changed later
-
     const int convX = ((x-364)*8-5280); 
     const int convY = ((y-364)*8-5280);
     int multiple = (convX && convY)?2:1;
@@ -255,6 +281,11 @@ double sqrt(double square)
     for (i=0; i<32; i++)
         root = (root + square / root) / 2;
     return root;
+}
+
+double abs(double x){
+    x=(x>0)? x:-x;
+    return x;
 }
 
 /* end of the call functions and other supporting functions*/
