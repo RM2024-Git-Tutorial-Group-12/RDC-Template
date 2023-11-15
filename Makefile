@@ -32,7 +32,7 @@ DEBUG = -g3
 # -Ofast 	optimize for speed
 # -Og 		optimize for debugging
 # do not use -flto, it will make the code undebuggable
-OPT = -O3
+OPT = -Og
 
 # silent mode
 VERBOSE = 0

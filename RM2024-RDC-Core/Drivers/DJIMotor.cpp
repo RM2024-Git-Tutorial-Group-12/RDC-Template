@@ -5,11 +5,14 @@
 #ifdef USE_DJI_MOTOR
 #ifndef RDC_DJIMotor_MAX_NUM
 #define RDC_DJIMotor_MAX_NUM 8
+#define UP 1
+#define DOWN -1
+#define REST 0
 #endif
 
 namespace DJIMotor
 {
-    
+    const int constspeed = 2000;
     MotorPair arms = MotorPair(5,2);
 /* The Declarations of DJIMotor Class*/
 
@@ -19,7 +22,6 @@ namespace DJIMotor
         mechanicalAngle = 0;
         rotationalSpeed = 0;
         current = 0;
-        motorTemperature = 25;
         lastUpdated = 0;
     }
 
@@ -27,7 +29,7 @@ namespace DJIMotor
         mechanicalAngle = rxMotorData[0] <<8 | rxMotorData[1];
         rotationalSpeed = rxMotorData[2] <<8 | rxMotorData[3];
         current = rxMotorData[4] <<8 | rxMotorData[5];
-        motorTemperature = rxMotorData[6];
+        // motorTemperature = rxMotorData[6];
     }
 
     void DJIMotor::updateTargetCurrent(const int TC){
@@ -38,7 +40,7 @@ namespace DJIMotor
         container[0] = mechanicalAngle;
         container[1] = rotationalSpeed;
         container[2] = current;
-        container[3] = motorTemperature;
+        container[3] = 0;
         container[4] = convertedUART;
     }
 
@@ -46,12 +48,11 @@ namespace DJIMotor
         float newCurrent;
         ticks currentTime = HAL_GetTick();
         newCurrent = motorPID.update(convertedUART,rotationalSpeed,currentTime-lastUpdated) + current;
-
         lastUpdated = currentTime;
 
         return newCurrent;
     }
-
+    
     int DJIMotor::getCANID(){
         return canID;
     }
@@ -79,6 +80,23 @@ namespace DJIMotor
     }
 
     void MotorPair::transmit(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
+        uint8_t txMessage[8] = {0};
+        uint32_t mailBox = 0;
+        int offset = 0;
+
+        for (int index = 0; index < size; index++){
+            uint16_t PIDCurrent = motor[index].getPIDCurrent();
+            txMessage[index+offset] = PIDCurrent >> 8;
+            txMessage[index+offset+1] = PIDCurrent;
+            offset++;
+        }
+
+        if (HAL_CAN_AddTxMessage(hcan, header, txMessage, &mailBox) != HAL_OK){
+            errorHandler(hcan,header,filter);
+        }
+    }
+
+    void MotorPair::transmit_arm(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
         uint8_t txMessage[8] = {0};
         uint32_t mailBox = 0;
         int offset = 0;
@@ -241,6 +259,27 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,MotorPair& pair){
     int motorCurrents[4] = {0};
     linearMov.cpyMotorVals(motorCurrents);
     pair.updateCurrents(motorCurrents);
+}
+
+void UART_ConvertArm(const DR16::RcData& RcData,MotorPair& pair){
+    const int axis1 = RcData.channel1;
+    const int axis2 = RcData.channel3;
+
+    int status_axis1;
+    int status_axis2;
+    
+    if (axis1 > 1024) status_axis1 = UP;
+    else if (axis1 < 1024) status_axis1 = DOWN;
+    else status_axis1 = REST;
+    if (axis2 > 1024) status_axis2 = UP;
+    else if (axis2 < 1024) status_axis2 = DOWN; 
+    else status_axis2 = REST;
+    
+    int motorCurrents[2] = {0};
+    motorCurrents[0] = status_axis1 * constspeed;
+    motorCurrents[1] = status_axis2 * constspeed;
+    pair.updateCurrents(motorCurrents);
+
 }
 
 int max(const int a, const int b){

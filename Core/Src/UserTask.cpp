@@ -15,20 +15,20 @@
 #include "PID.hpp"     // Include PID
 #include "main.h"
 #include "task.h"  // Include task
-
-#include "semphr.h"
 #include "can.h"
 
 /*Allocate the stack for our PID task*/
 StackType_t DR16TaskStack[configMINIMAL_STACK_SIZE];
 StackType_t CANWheelTaskStack[configMINIMAL_STACK_SIZE];
+StackType_t CANArmTaskStack[configMINIMAL_STACK_SIZE];
 /*Declare the PCB for our PID task*/
 StaticTask_t DR16TaskTCB;
 StaticTask_t CANWheelTaskTCB;
+StaticTask_t CANArmTaskTCB;
 // StaticTask_t CANArmTaskTCB;
 
 static DR16::RcData uartSnapshot;
-const float PID[4][3] = {{0.5,0,0},{1,0,0},{1,0,0},{1,0,0}};
+const float PID[4][3] = {{1,0,0},{1,0,0},{1,0,0},{1,0,0}};
 static DJIMotor::MotorPair wheels = DJIMotor::MotorPair(1,4,PID);
 static DJIMotor::MotorPair arms = DJIMotor::MotorPair(5,2);
 /**
@@ -77,6 +77,7 @@ void CANTaskWheel(void *){
 
     while (true)
     {
+        if (uartSnapshot.s2 != 3){continue;}
         DJIMotor::UART_ConvertMotor(uartSnapshot,wheels);
         CAN_RxHeaderTypeDef RxHeader;
         uint8_t RxData[8];
@@ -88,13 +89,39 @@ void CANTaskWheel(void *){
         }
 
         wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
-        
         vTaskDelay(1);
     }
     
     
 }
 
+void CANTaskArm(void *){
+    CAN_TxHeaderTypeDef txHeaderArm = {EX_TX_ID, 0, CAN_ID_STD, CAN_RTR_DATA, 8, DISABLE};
+    CAN_FilterTypeDef FilterArm = {0x205 << 5, 0x206 << 5,
+                                        CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,
+                                        CAN_FILTER_ENABLE,0};
+    arms.init(&hcan,&FilterArm);
+
+    while (true){
+        if (uartSnapshot.s2 != 2){continue;}
+        
+        CAN_RxHeaderTypeDef RxHeader;
+        uint8_t RxData[8];
+        HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan,CAN_RX_FIFO0,&RxHeader,RxData);
+        if (status == HAL_OK){
+            switch(RxHeader.StdId){
+                case 0x205:
+                    arms[0].updateInfoFromCAN(RxData);
+                    break;
+                case 0x206:
+                    arms[1].updateInfoFromCAN(RxData);
+                    break;       
+            } 
+        }
+        arms.transmit(&hcan,&txHeaderArm,&FilterArm);
+        vTaskDelay(1);
+    }
+}
 /**
  * @brief Intialize all the drivers and add task to the scheduler
  * @todo  Add your own task in this file
@@ -117,6 +144,13 @@ void startUserTasks()
                       1,
                       CANWheelTaskStack,
                       &CANWheelTaskTCB); 
+    // xTaskCreateStatic(CANTaskArm,
+    //                   "CANTaskArm ",
+    //                   configMINIMAL_STACK_SIZE,
+    //                   NULL,
+    //                   1,
+    //                   CANArmTaskStack,
+    //                   &CANArmTaskTCB); 
     /**
      * @todo Add your own task here
     */

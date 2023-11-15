@@ -11,7 +11,8 @@ float PID::update(float target, float measurement, float dt)
     /*=====================================================================*/
     
     error = target - measurement;  // error = target - current
-
+    if (error>10000) error=10000;
+    else if (error<-10000) error=-10000;
     pOut = Kp * error;  // pOut = Kp * error
 
     iOut += Ki * error * dt;  // iOut = integral(Ki * error)

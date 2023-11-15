@@ -38,6 +38,8 @@ void errorHandler(){
     rcData.channel1 = 1024;
     rcData.channel2 = 1024;
     rcData.channel3 = 1024;
+    rcData.s1=1;
+    rcData.s2=1;
     // switch no normal state
 }
 
