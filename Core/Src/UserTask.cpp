@@ -68,7 +68,10 @@ void DR16Communication(void *)
 
 void CANTaskWheel(void *){
     CAN_TxHeaderTypeDef txHeaderWheel = {TX_ID, 0, CAN_ID_STD, CAN_RTR_DATA, 8, DISABLE};
-    CAN_FilterTypeDef FilterWheel = {0x201 << 5, 0x202 << 5,0x203 << 5,0x204 << 5,
+    // CAN_FilterTypeDef FilterWheel = {0x201 << 5, 0x202 << 5,0x203 << 5,0x204 << 5,
+    //                                     CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,
+    //                                     CAN_FILTER_ENABLE,0};
+    CAN_FilterTypeDef FilterWheel = {0, 0,0,0,
                                         CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,
                                         CAN_FILTER_ENABLE,0};
 
@@ -77,17 +80,28 @@ void CANTaskWheel(void *){
 
     while (true)
     {
+        
         if (uartSnapshot.s2 != 3){continue;}
+        
         DJIMotor::UART_ConvertMotor(uartSnapshot,wheels);
         CAN_RxHeaderTypeDef RxHeader;
         uint8_t RxData[8];
 
-        HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &RxHeader, RxData);
+        // while (HAL_CAN_GetRxFifoFillLevel(&hcan,CAN_RX_FIFO0)!=0){
+        //     HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &RxHeader, RxData);
+        //     if (status == HAL_OK){
+        //         int index = RxHeader.StdId - 0x201;
+        //         if (index < 4){wheels[index].updateInfoFromCAN(RxData);}
+        //     }
+        // }
+        // if (!connected){wheels.errorHandler(&hcan,&txHeaderWheel,&FilterWheel);}
+        // wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
+        // vTaskDelay(1);
+        HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan,CAN_RX_FIFO0,&RxHeader,RxData);
         if (status == HAL_OK){
-            int index = RxHeader.StdId - wheels[0].getCANID();
+            int index = RxHeader.StdId - 0x201;
             wheels[index].updateInfoFromCAN(RxData);
         }
-
         wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
         vTaskDelay(1);
     }
@@ -97,14 +111,13 @@ void CANTaskWheel(void *){
 
 void CANTaskArm(void *){
     CAN_TxHeaderTypeDef txHeaderArm = {EX_TX_ID, 0, CAN_ID_STD, CAN_RTR_DATA, 8, DISABLE};
-    CAN_FilterTypeDef FilterArm = {0x205 << 5, 0x206 << 5,
+    CAN_FilterTypeDef FilterArm = {0, 0,0,0,
                                         CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,
                                         CAN_FILTER_ENABLE,0};
     arms.init(&hcan,&FilterArm);
-
     while (true){
         if (uartSnapshot.s2 != 2){continue;}
-        
+        DJIMotor::UART_ConvertArm(uartSnapshot,arms);
         CAN_RxHeaderTypeDef RxHeader;
         uint8_t RxData[8];
         HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan,CAN_RX_FIFO0,&RxHeader,RxData);
@@ -115,7 +128,9 @@ void CANTaskArm(void *){
                     break;
                 case 0x206:
                     arms[1].updateInfoFromCAN(RxData);
-                    break;       
+                    break;  
+                default:
+                    break;     
             } 
         }
         arms.transmit(&hcan,&txHeaderArm,&FilterArm);
@@ -144,13 +159,13 @@ void startUserTasks()
                       1,
                       CANWheelTaskStack,
                       &CANWheelTaskTCB); 
-    // xTaskCreateStatic(CANTaskArm,
-    //                   "CANTaskArm ",
-    //                   configMINIMAL_STACK_SIZE,
-    //                   NULL,
-    //                   1,
-    //                   CANArmTaskStack,
-    //                   &CANArmTaskTCB); 
+    xTaskCreateStatic(CANTaskArm,
+                      "CANTaskArm ",
+                      configMINIMAL_STACK_SIZE,
+                      NULL,
+                      1,
+                      CANArmTaskStack,
+                      &CANArmTaskTCB); 
     /**
      * @todo Add your own task here
     */

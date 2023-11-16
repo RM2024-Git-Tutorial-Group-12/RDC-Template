@@ -8,11 +8,11 @@
 #define UP 1
 #define DOWN -1
 #define REST 0
+#define CONSTSPEED 2000
 #endif
 
 namespace DJIMotor
 {
-    const int constspeed = 2000;
     MotorPair arms = MotorPair(5,2);
 /* The Declarations of DJIMotor Class*/
 
@@ -23,6 +23,12 @@ namespace DJIMotor
         rotationalSpeed = 0;
         current = 0;
         lastUpdated = 0;
+        if (i >= 0 && i <= 3){
+            motorType = TYPE::WHEEL;
+        }
+        else{
+            motorType = TYPE::ARM;
+        }
     }
 
     void DJIMotor::updateInfoFromCAN(const uint8_t rxMotorData[8]){
@@ -30,35 +36,57 @@ namespace DJIMotor
         rotationalSpeed = rxMotorData[2] <<8 | rxMotorData[3];
         current = rxMotorData[4] <<8 | rxMotorData[5];
         // motorTemperature = rxMotorData[6];
+        
     }
 
-    void DJIMotor::updateTargetCurrent(const int TC){
-        this->convertedUART = TC;
+    void DJIMotor::updateTargetRPM(const int TC){
+        convertedUART = TC;
     }
 
-    void DJIMotor::getValues(int container[5]){
-        container[0] = mechanicalAngle;
-        container[1] = rotationalSpeed;
-        container[2] = current;
-        container[3] = 0;
-        container[4] = convertedUART;
-    }
+    // void DJIMotor::getValues(int container[5]){
+    //     container[0] = mechanicalAngle;
+    //     container[1] = rotationalSpeed;
+    //     container[2] = current;
+    //     container[3] = 0;
+    //     container[4] = convertedUART;
+    // }
 
-    int DJIMotor::getPIDCurrent(){
+
+    /*
+        The workflow of this functions
+        If it is an arm and its uart value is 0
+            - The use the position PID to feed it to the RPM PID
+        else
+            - Then just use RPM PID
+
+    */
+    float DJIMotor::getPIDCurrent(){
         float newCurrent;
-        ticks currentTime = HAL_GetTick();
-        newCurrent = motorPID.update(convertedUART,rotationalSpeed,currentTime-lastUpdated) + current;
+                ticks currentTime = HAL_GetTick();
+newCurrent = motorPID.update(convertedUART,rotationalSpeed,currentTime-lastUpdated) + current;
         lastUpdated = currentTime;
 
         return newCurrent;
     }
     
-    int DJIMotor::getCANID(){
-        return canID;
+    int32_t DJIMotor::getPIDSpeed(){
+        int32_t newSpeed;
+        ticks currentTime = HAL_GetTick();
+        newSpeed = motorPID.update(0, realAngle,currentTime-lastUpdated);
+        lastUpdated = currentTime;
+        return newSpeed;
     }
+    // int DJIMotor::getCANID(){
+    //     return canID;
+    // }
     void DJIMotor::setPID(const float* pid){
         motorPID = Control::PID{pid[0],pid[1],pid[2]};
     }
+
+    void DJIMotor::setRealAngle(const int& angleChange){
+        realAngle += angleChange;
+    }
+
 /* end of the declaration of DJIMotor class*/
 
 /* Start of the declaration of MotorPair class */
@@ -82,13 +110,11 @@ namespace DJIMotor
     void MotorPair::transmit(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
         uint8_t txMessage[8] = {0};
         uint32_t mailBox = 0;
-        int offset = 0;
-
+    
         for (int index = 0; index < size; index++){
-            uint16_t PIDCurrent = motor[index].getPIDCurrent();
-            txMessage[index+offset] = PIDCurrent >> 8;
-            txMessage[index+offset+1] = PIDCurrent;
-            offset++;
+            short PIDCurrent = motor[index].getPIDCurrent();
+            txMessage[index*2] = PIDCurrent >> 8;
+            txMessage[index*2+1] = PIDCurrent;
         }
 
         if (HAL_CAN_AddTxMessage(hcan, header, txMessage, &mailBox) != HAL_OK){
@@ -99,13 +125,11 @@ namespace DJIMotor
     void MotorPair::transmit_arm(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
         uint8_t txMessage[8] = {0};
         uint32_t mailBox = 0;
-        int offset = 0;
 
         for (int index = 0; index < size; index++){
-            uint16_t PIDCurrent = motor[index].getPIDCurrent();
-            txMessage[index+offset] = PIDCurrent >> 8;
-            txMessage[index+offset+1] = PIDCurrent;
-            offset++;
+            int16_t PIDCurrent = motor[index].getPIDCurrent();
+            txMessage[index*2] = PIDCurrent >> 8;
+            txMessage[index*2+1] = PIDCurrent;
         }
 
         if (HAL_CAN_AddTxMessage(hcan, header, txMessage, &mailBox) != HAL_OK){
@@ -127,9 +151,9 @@ namespace DJIMotor
         HAL_CAN_ConfigFilter(hcan, filter);
     }
 
-    void MotorPair::updateCurrents(const int NewCurrents[4]){
+    void MotorPair::updateTargetRPM(const int NewCurrents[4]){
         for (int index = 0; index < size; index++){
-            motor[index].updateTargetCurrent(NewCurrents[index]);
+            motor[index].updateTargetRPM(NewCurrents[index]);
         }
     }
 
@@ -176,6 +200,15 @@ namespace DJIMotor
     //     );
     // }
 
+    motorMechanics motorMechanics::operator*(const float multiplier){
+        return motorMechanics(
+            multiplier*motor1,
+            multiplier*motor2,
+            multiplier*motor3,
+            multiplier*motor4
+        );
+    }
+
     void motorMechanics::matrixRotateLeft(){
         *this = motorMechanics(motor2,motor4,motor1,motor3);
     }
@@ -185,16 +218,18 @@ namespace DJIMotor
     }
 
     void motorMechanics::normalise(const int upperBound){
+        int multiply = upperBound;
+        if (upperBound > 12000){multiply = 12000;}
         float total = sqrt(
             motor1*motor1+
             motor2*motor2+
             motor3*motor3+
             motor4*motor4
         );
-        motor1 = (motor1*upperBound)/total;
-        motor2 = (motor2*upperBound)/total;
-        motor3 = (motor3*upperBound)/total;
-        motor4 = (motor4*upperBound)/total;
+        motor1 = (motor1*multiply)/total;
+        motor2 = (motor2*multiply)/total;
+        motor3 = (motor3*multiply)/total;
+        motor4 = (motor4*multiply)/total;
     }
 
     void motorMechanics::cpyMotorVals(int container[4]){
@@ -231,11 +266,11 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,MotorPair& pair){
     const int y = RCdata.channel0;
     const int w = RCdata.channel2;
 
-    // a contrained limit of 7920 has been set, which can be changed later
+    // a contrained limit of +-5280 has been set, which can be changed later
 
     const int convX = ((x-364)*8-5280); 
     const int convY = ((y-364)*8-5280);
-    int multiple = (convX && convY)?2:1;
+    float multiple = (convX && convY)?2:1;
     const int convW = ((w-364)*8-5280) * multiple;
 
 
@@ -255,10 +290,10 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,MotorPair& pair){
         max(convX,-convX)+
         max(convY,-convY)+
         max(convW,-convW)
-    )*1.3);
+    ));
     int motorCurrents[4] = {0};
     linearMov.cpyMotorVals(motorCurrents);
-    pair.updateCurrents(motorCurrents);
+    pair.updateTargetRPM(motorCurrents);
 }
 
 void UART_ConvertArm(const DR16::RcData& RcData,MotorPair& pair){
@@ -276,9 +311,9 @@ void UART_ConvertArm(const DR16::RcData& RcData,MotorPair& pair){
     else status_axis2 = REST;
     
     int motorCurrents[2] = {0};
-    motorCurrents[0] = status_axis1 * constspeed;
-    motorCurrents[1] = status_axis2 * constspeed;
-    pair.updateCurrents(motorCurrents);
+    motorCurrents[0] = status_axis1 * CONSTSPEED;
+    motorCurrents[1] = status_axis2 * CONSTSPEED;
+    pair.updateTargetRPM(motorCurrents);
 
 }
 

@@ -44,12 +44,22 @@ namespace DJIMotor
  * @brief This is what we really appreiciate in our programming
  */ 
 
+    enum class TYPE{
+        WHEEL,
+        ARM
+    };
+
     class DJIMotor
     {
         private:
             uint16_t canID;  // You need to assign motor's can ID for different motor
+            
+            // Below are the types of measurements 
+
             int convertedUART;
             int realAngle;
+
+            // Below are types of 
 
             int mechanicalAngle;
             int rotationalSpeed;
@@ -57,18 +67,20 @@ namespace DJIMotor
 
             Control::PID motorPID{1,0,0}; //uncomment the code once the PID has a proper constructor and then update DJIMotor accordingly
             ticks lastUpdated;
+            TYPE motorType;
 
         public:
             DJIMotor(const int& ID);
 
             void updateInfoFromCAN(const uint8_t* rxBuffer);
-            void updateTargetCurrent(const int rx);
+            void updateTargetRPM(const int);
             void setPID(const float*);
 
-            void getValues(int* container);
-            int getPIDCurrent();
-            int getPIDSpeed();
-            int getCANID();
+            // void getValues(int* container);
+            float getPIDCurrent();
+            int32_t getPIDSpeed();
+            void setRealAngle(const int&);
+            // int getCANID();
 
         /*======================================================*/
         /**
@@ -97,10 +109,13 @@ namespace DJIMotor
 
             void transmit(CAN_HandleTypeDef*,CAN_TxHeaderTypeDef*,CAN_FilterTypeDef*);
             void transmit_arm(CAN_HandleTypeDef*,CAN_TxHeaderTypeDef*,CAN_FilterTypeDef*);
+
             void errorHandler(CAN_HandleTypeDef*,CAN_TxHeaderTypeDef*,CAN_FilterTypeDef*);
+
             DJIMotor& operator[](const int);
             void init(CAN_HandleTypeDef* hcan,CAN_FilterTypeDef* filter);
-            void updateCurrents(const int*);
+            
+            void updateTargetRPM(const int*);
     };
 
     class motorMechanics{
@@ -117,7 +132,8 @@ namespace DJIMotor
         // void operator=(const int*);
 
         motorMechanics operator+(const motorMechanics& matrix);
-        motorMechanics operator*(const int& matrix);
+        motorMechanics operator*(const float matrix);
+
         void matrixRotateLeft(); 
         void matrixRotateRight();
 
