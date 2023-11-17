@@ -100,7 +100,7 @@ void CANTaskWheel(void *){
         HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan,CAN_RX_FIFO0,&RxHeader,RxData);
         if (status == HAL_OK){
             int index = RxHeader.StdId - 0x201;
-            wheels[index].updateInfoFromCAN(RxData);
+            if (index<4) wheels[index].updateInfoFromCAN(RxData);
         }
         wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
         vTaskDelay(1);

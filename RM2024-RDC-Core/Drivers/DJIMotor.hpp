@@ -78,7 +78,7 @@ namespace DJIMotor
 
             // void getValues(int* container);
             float getPIDCurrent();
-            int32_t getPIDSpeed();
+            float getPIDSpeed();
             void setRealAngle(const int&);
             // int getCANID();
 

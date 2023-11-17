@@ -62,18 +62,19 @@ namespace DJIMotor
     */
     float DJIMotor::getPIDCurrent(){
         float newCurrent;
-                ticks currentTime = HAL_GetTick();
-newCurrent = motorPID.update(convertedUART,rotationalSpeed,currentTime-lastUpdated) + current;
+        ticks currentTime = HAL_GetTick();
+        newCurrent = motorPID.update(convertedUART,rotationalSpeed,currentTime-lastUpdated);
         lastUpdated = currentTime;
 
         return newCurrent;
     }
     
-    int32_t DJIMotor::getPIDSpeed(){
-        int32_t newSpeed;
+    float DJIMotor::getPIDSpeed(){
+        float newSpeed;
         ticks currentTime = HAL_GetTick();
         newSpeed = motorPID.update(0, realAngle,currentTime-lastUpdated);
         lastUpdated = currentTime;
+        
         return newSpeed;
     }
     // int DJIMotor::getCANID(){
@@ -127,7 +128,7 @@ newCurrent = motorPID.update(convertedUART,rotationalSpeed,currentTime-lastUpdat
         uint32_t mailBox = 0;
 
         for (int index = 0; index < size; index++){
-            int16_t PIDCurrent = motor[index].getPIDCurrent();
+            short PIDCurrent = motor[index].getPIDCurrent();
             txMessage[index*2] = PIDCurrent >> 8;
             txMessage[index*2+1] = PIDCurrent;
         }
@@ -265,7 +266,7 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,MotorPair& pair){
     const int x = RCdata.channel1;
     const int y = RCdata.channel0;
     const int w = RCdata.channel2;
-
+    if (!x || !y || !w){return;}
     // a contrained limit of +-5280 has been set, which can be changed later
 
     const int convX = ((x-364)*8-5280); 
