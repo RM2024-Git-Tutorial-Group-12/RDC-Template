@@ -29,7 +29,7 @@ StaticTask_t CANArmTaskTCB;
 // StaticTask_t CANArmTaskTCB;
 
 static DR16::RcData uartSnapshot;
-const float MotorPID[4][3] = {{1,0,0},{1,0,0},{1,0,0},{1,0,0}};
+const float MotorPID[4][3] = {{2,0,0},{2,0,0},{2,0,0},{2,0,0}};
 const float ArmPID[2][3] = {{1,0,0},{1,0,0}};
 
 static DJIMotor::MotorPair wheels = DJIMotor::MotorPair(1,4,MotorPID);

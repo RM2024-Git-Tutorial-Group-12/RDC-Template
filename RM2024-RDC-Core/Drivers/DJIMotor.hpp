@@ -136,17 +136,20 @@ namespace DJIMotor
         // void operator=(const int*);
 
         motorMechanics operator+(const motorMechanics& matrix);
-        motorMechanics operator*(const float matrix);
+        motorMechanics operator*(const float multiple);
 
         void matrixRotateLeft(); 
         void matrixRotateRight();
 
-        void normalise(const int max);
+        void normalise();
         void cpyMotorVals(int*);
+        void reduceCornerRotate();
 
     };
 
     int max(const int a, const int b);
+
+    int abs(const int& a);
 /**
  * @brief The whole motor's module initialization function
  * @note  You might initialize the CAN Module here

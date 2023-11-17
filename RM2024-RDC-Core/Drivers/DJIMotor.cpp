@@ -8,13 +8,13 @@
 #define UP 1
 #define DOWN -1
 #define REST 0
-#define AXISSPEED1 3000
-#define AXISSPEED2 1500
+#define AXISSPEED1 4500
+#define AXISSPEED2 3000
+#define SPEEDLIMIT 6000
 #endif
 
 namespace DJIMotor
 {
-    MotorPair arms = MotorPair(5,2);
 /* The Declarations of DJIMotor Class*/
 
     DJIMotor::DJIMotor(const int& i){
@@ -126,21 +126,6 @@ namespace DJIMotor
         }
     }
 
-    // void MotorPair::transmit_arm(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
-    //     uint8_t txMessage[8] = {0};
-    //     uint32_t mailBox = 0;
-
-    //     for (int index = 0; index < size; index++){
-    //         short PIDRPM = motor[index].getPIDRPM();
-    //         txMessage[index*2] = PIDRPM >> 8;
-    //         txMessage[index*2+1] = PIDRPM;
-    //     }
-
-    //     if (HAL_CAN_AddTxMessage(hcan, header, txMessage, &mailBox) != HAL_OK){
-    //         errorHandler(hcan,header,filter);
-    //     }
-    // }
-
     void MotorPair::errorHandler(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter){
         uint8_t txMessage[8] = {0};
         uint32_t mailBox = 0;
@@ -206,19 +191,18 @@ namespace DJIMotor
         *this = motorMechanics(motor3,motor1,motor4,motor2);
     }
 
-    void motorMechanics::normalise(const int upperBound){
-        int multiply = upperBound;
-        if (upperBound > 12000){multiply = 12000;}
+    void motorMechanics::normalise(){
+        if (abs(motor1)+abs(motor2)+abs(motor3)+abs(motor4) < 2*SPEEDLIMIT){return;}
         float total = sqrt(
             motor1*motor1+
             motor2*motor2+
             motor3*motor3+
             motor4*motor4
         );
-        motor1 = (motor1*multiply)/total;
-        motor2 = (motor2*multiply)/total;
-        motor3 = (motor3*multiply)/total;
-        motor4 = (motor4*multiply)/total;
+        motor1 = (motor1*SPEEDLIMIT)/total;
+        motor2 = (motor2*SPEEDLIMIT)/total;
+        motor3 = (motor3*SPEEDLIMIT)/total;
+        motor4 = (motor4*SPEEDLIMIT)/total;
     }
 
     void motorMechanics::cpyMotorVals(int container[4]){
@@ -226,6 +210,24 @@ namespace DJIMotor
         container[1] = motor2; 
         container[2] = motor3; 
         container[3] = motor4;
+    }
+
+    void motorMechanics::reduceCornerRotate(){
+        const float multiple = 0.5;
+        if (motor1 && motor2 && motor3 && motor4){return;}
+
+        if (motor1 == 0){
+            motor4 *= multiple;
+        }
+        if (motor2 == 0){
+            motor3 *= multiple;
+        }
+        if (motor3 == 0){
+            motor2 *= multiple;
+        }
+        if (motor4 == 0){
+            motor1 *= multiple;
+        }
     }
 
 /* end of the declaration of the motorMechanics*/
@@ -257,10 +259,10 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,MotorPair& pair){
     if (!x || !y || !w){return;}
     // a contrained limit of +-5280 has been set, which can be changed later
 
-    const int convX = ((x-364)*8-5280); 
-    const int convY = ((y-364)*8-5280);
-    float multiple = (convX && convY)?2:1;
-    const int convW = ((w-364)*8-5280) * multiple;
+    const int convX = ((x-364)*8-5280)*21/(19+21); 
+    const int convY = ((y-364)*8-5280)*19/(19+21);
+    // float multiple = (convX && convY)?2:1;
+    const int convW = ((w-364)*8-5280);
 
     motorMechanics xMov({convX,-convX,convX,-convX});
     motorMechanics yMov({convY,convY,-convY,-convY});
@@ -276,12 +278,10 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,MotorPair& pair){
     }
 
     linearMov = linearMov + wMov;
-    linearMov.normalise((
-        max(convX,-convX)+
-        max(convY,-convY)+
-        max(convW,-convW)
-    ));
+
+
     int motorCurrents[4] = {0};
+    linearMov.normalise();
     linearMov.cpyMotorVals(motorCurrents);
     pair.updateTargetRPM(motorCurrents);
 }
@@ -312,7 +312,9 @@ int max(const int a, const int b){
     return (a>b)?a:b;
 }
 
-
+int abs(const int& val){
+    return (val > 0)?val:-val;
+}
 //  approx sqrt
 double sqrt(double square)
 {
