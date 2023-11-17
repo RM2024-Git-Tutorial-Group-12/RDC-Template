@@ -8,7 +8,8 @@
 #define UP 1
 #define DOWN -1
 #define REST 0
-#define CONSTSPEED 2000
+#define AXISSPEED1 3000
+#define AXISSPEED2 1500
 #endif
 
 namespace DJIMotor
@@ -35,6 +36,8 @@ namespace DJIMotor
         mechanicalAngle = rxMotorData[0] <<8 | rxMotorData[1];
         rotationalSpeed = rxMotorData[2] <<8 | rxMotorData[3];
         current = rxMotorData[4] <<8 | rxMotorData[5];
+
+        
         // motorTemperature = rxMotorData[6];
         
     }
@@ -60,21 +63,28 @@ namespace DJIMotor
             - Then just use RPM PID
 
     */
-    float DJIMotor::getPIDCurrent(){
+    int DJIMotor::getPIDCurrent(){
         float newCurrent;
+        
+        int newSpeed = convertedUART;
         ticks currentTime = HAL_GetTick();
-        newCurrent = motorPID.update(convertedUART,rotationalSpeed,currentTime-lastUpdated);
+        if (convertedUART==0) {
+            realAngle += rotationalSpeed*(currentTime-lastUpdated);
+            newSpeed = getPIDSpeed(); 
+        }
+        else {realAngle = 0;}
+        newCurrent = motorPID.update(newSpeed,rotationalSpeed,currentTime-lastUpdated);
         lastUpdated = currentTime;
 
         return newCurrent;
     }
     
-    float DJIMotor::getPIDSpeed(){
+    int DJIMotor::getPIDSpeed(){
         float newSpeed;
         ticks currentTime = HAL_GetTick();
         newSpeed = motorPID.update(0, realAngle,currentTime-lastUpdated);
         lastUpdated = currentTime;
-        
+
         return newSpeed;
     }
     // int DJIMotor::getCANID(){
@@ -312,8 +322,8 @@ void UART_ConvertArm(const DR16::RcData& RcData,MotorPair& pair){
     else status_axis2 = REST;
     
     int motorCurrents[2] = {0};
-    motorCurrents[0] = status_axis1 * CONSTSPEED;
-    motorCurrents[1] = status_axis2 * CONSTSPEED;
+    motorCurrents[0] = status_axis1 * AXISSPEED1;
+    motorCurrents[1] = status_axis2 * AXISSPEED2;
     pair.updateTargetRPM(motorCurrents);
 
 }

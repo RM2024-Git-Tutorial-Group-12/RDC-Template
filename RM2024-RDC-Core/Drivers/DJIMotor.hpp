@@ -77,9 +77,13 @@ namespace DJIMotor
             void setPID(const float*);
 
             // void getValues(int* container);
-            float getPIDCurrent();
-            float getPIDSpeed();
+            int getPIDCurrent();
+            int getPIDSpeed();
             void setRealAngle(const int&);
+            void RealAngleInit(){realAngle=0;}
+            int getrotationalSpeed(){return rotationalSpeed;}
+            int getconvertedUART(){return convertedUART;}
+            int getrealAngle(){return realAngle;}
             // int getCANID();
 
         /*======================================================*/
@@ -116,6 +120,7 @@ namespace DJIMotor
             void init(CAN_HandleTypeDef* hcan,CAN_FilterTypeDef* filter);
             
             void updateTargetRPM(const int*);
+            int getsize(){return size;}
     };
 
     class motorMechanics{
