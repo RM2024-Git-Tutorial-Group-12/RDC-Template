@@ -5,12 +5,7 @@
 #ifdef USE_DJI_MOTOR
 #ifndef RDC_DJIMotor_MAX_NUM
 #define RDC_DJIMotor_MAX_NUM 8
-#define UP 1
-#define DOWN -1
-#define REST 0
-#define AXISSPEED1 4500
-#define AXISSPEED2 3000
-#define SPEEDLIMIT 6000
+
 #endif
 
 namespace DJIMotor
@@ -192,13 +187,10 @@ namespace DJIMotor
     }
 
     void motorMechanics::normalise(){
-        if (abs(motor1)+abs(motor2)+abs(motor3)+abs(motor4) < 2*SPEEDLIMIT){return;}
-        float total = sqrt(
-            motor1*motor1+
-            motor2*motor2+
-            motor3*motor3+
-            motor4*motor4
-        );
+        if (abs(motor1) <= SPEEDLIMIT && abs(motor2) <= SPEEDLIMIT && abs(motor3) <= SPEEDLIMIT && abs(motor4) <= SPEEDLIMIT){return;}
+
+        int total = absmax(motor1,motor2,motor3,motor4);
+
         motor1 = (motor1*SPEEDLIMIT)/total;
         motor2 = (motor2*SPEEDLIMIT)/total;
         motor3 = (motor3*SPEEDLIMIT)/total;
@@ -257,28 +249,18 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,MotorPair& pair){
     const int y = RCdata.channel0;
     const int w = RCdata.channel2;
     if (!x || !y || !w){return;}
-    // a contrained limit of +-5280 has been set, which can be changed later
 
-    const int convX = ((x-364)*8-5280)*21/(19+21); 
-    const int convY = ((y-364)*8-5280)*19/(19+21);
-    // float multiple = (convX && convY)?2:1;
-    const int convW = ((w-364)*8-5280);
+    const int multiple = 2*(SPEEDLIMIT/(UART_MAX-UART_MIN));
+
+    const int convX = ((x - UART_MIN)*multiple - SPEEDLIMIT); 
+    const int convY = ((y - UART_MIN)*multiple - SPEEDLIMIT);
+    const int convW = ((w - UART_MIN)*multiple - SPEEDLIMIT);
 
     motorMechanics xMov({convX,-convX,convX,-convX});
     motorMechanics yMov({convY,convY,-convY,-convY});
     motorMechanics wMov({convW,convW,convW,convW});
 
-    motorMechanics linearMov = xMov + yMov;
-
-    if (convW >= 0){
-        linearMov.matrixRotateLeft();
-    }
-    if (convW <= 0){
-        linearMov.matrixRotateRight();
-    }
-
-    linearMov = linearMov + wMov;
-
+    motorMechanics linearMov = xMov + yMov + wMov;
 
     int motorCurrents[4] = {0};
     linearMov.normalise();
@@ -310,6 +292,19 @@ void UART_ConvertArm(const DR16::RcData& RcData,MotorPair& pair){
 
 int max(const int a, const int b){
     return (a>b)?a:b;
+}
+
+int absmax(int a, int b, int c, int d){
+    if (abs(a) > abs(b) && abs(a) > abs(c) && abs(a) > abs(d)){
+        return abs(a);
+    }
+    else if (abs(b) > abs(c) && abs(b) > abs(d)){
+        return abs(b);
+    }
+    else if (abs(c) > abs(d)){
+        return abs(c);
+    }
+    return abs(d);
 }
 
 int abs(const int& val){

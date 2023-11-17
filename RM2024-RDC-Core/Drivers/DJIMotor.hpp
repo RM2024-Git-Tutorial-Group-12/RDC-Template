@@ -26,6 +26,13 @@
 #include "DR16.hpp"
 #include "PID.hpp"
 
+#define UP 1
+#define DOWN -1
+#define REST 0
+#define AXISSPEED1 3000
+#define AXISSPEED2 1500
+#define SPEEDLIMIT 3960
+
 namespace DJIMotor
 {
 
@@ -150,6 +157,7 @@ namespace DJIMotor
     int max(const int a, const int b);
 
     int abs(const int& a);
+    int absmax(int,int,int,int);
 /**
  * @brief The whole motor's module initialization function
  * @note  You might initialize the CAN Module here

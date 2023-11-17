@@ -20,6 +20,13 @@ float PID::update(float target, float measurement, float dt)
 
     iOut += Ki * error * dt;  // iOut = integral(Ki * error)
 
+    if (iOut > 1100){
+        iOut = 1100;
+    }
+    else if (iOut < -1100){
+        iOut = -1100;
+    }
+
     dOut = Kd * (error - lastError) / dt;  // dOut = derivative(Kd * error)
 
     output = pOut + iOut + dOut;  // output = pOut + iOut + dOut
