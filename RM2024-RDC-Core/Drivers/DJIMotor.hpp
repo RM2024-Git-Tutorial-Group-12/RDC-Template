@@ -61,9 +61,9 @@ namespace DJIMotor
 
             // Below are types of 
 
-            int mechanicalAngle;
-            int rotationalSpeed;
-            int current;
+            int16_t mechanicalAngle;
+            int16_t rotationalSpeed;
+            int16_t current;
 
             Control::PID motorPID{1,0,0}; //uncomment the code once the PID has a proper constructor and then update DJIMotor accordingly
             ticks lastUpdated;
@@ -77,7 +77,7 @@ namespace DJIMotor
             void setPID(const float*);
 
             // void getValues(int* container);
-            int getPIDCurrent();
+            int getPIDRPM();
             int getPIDSpeed();
             void setRealAngle(const int&);
             void RealAngleInit(){realAngle=0;}

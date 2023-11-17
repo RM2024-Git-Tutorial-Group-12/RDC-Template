@@ -63,8 +63,8 @@ namespace DJIMotor
             - Then just use RPM PID
 
     */
-    int DJIMotor::getPIDCurrent(){
-        float newCurrent;
+    int DJIMotor::getPIDRPM(){
+        float newRPM;
         
         int newSpeed = convertedUART;
         ticks currentTime = HAL_GetTick();
@@ -73,10 +73,10 @@ namespace DJIMotor
             newSpeed = getPIDSpeed(); 
         }
         else {realAngle = 0;}
-        newCurrent = motorPID.update(newSpeed,rotationalSpeed,currentTime-lastUpdated);
+        newRPM = motorPID.update(newSpeed,rotationalSpeed,currentTime-lastUpdated);
         lastUpdated = currentTime;
 
-        return newCurrent;
+        return newRPM;
     }
     
     int DJIMotor::getPIDSpeed(){
@@ -123,9 +123,9 @@ namespace DJIMotor
         uint32_t mailBox = 0;
     
         for (int index = 0; index < size; index++){
-            short PIDCurrent = motor[index].getPIDCurrent();
-            txMessage[index*2] = PIDCurrent >> 8;
-            txMessage[index*2+1] = PIDCurrent;
+            short PIDRPM = motor[index].getPIDRPM();
+            txMessage[index*2] = PIDRPM >> 8;
+            txMessage[index*2+1] = PIDRPM;
         }
 
         if (HAL_CAN_AddTxMessage(hcan, header, txMessage, &mailBox) != HAL_OK){
@@ -138,9 +138,9 @@ namespace DJIMotor
         uint32_t mailBox = 0;
 
         for (int index = 0; index < size; index++){
-            short PIDCurrent = motor[index].getPIDCurrent();
-            txMessage[index*2] = PIDCurrent >> 8;
-            txMessage[index*2+1] = PIDCurrent;
+            short PIDRPM = motor[index].getPIDRPM();
+            txMessage[index*2] = PIDRPM >> 8;
+            txMessage[index*2+1] = PIDRPM;
         }
 
         if (HAL_CAN_AddTxMessage(hcan, header, txMessage, &mailBox) != HAL_OK){
