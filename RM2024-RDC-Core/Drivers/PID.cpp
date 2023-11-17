@@ -12,7 +12,9 @@ float PID::update(float target, float measurement, float dt)
     
     error = target - measurement;  // error = target - current
 
-    if (error==0)  return this->output;
+    if (error == 0){ 
+        return this->output;
+    }
     
     pOut = Kp * error;  // pOut = Kp * error
 

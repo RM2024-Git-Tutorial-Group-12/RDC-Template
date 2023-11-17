@@ -16,6 +16,7 @@
 #include "main.h"
 #include "task.h"  // Include task
 #include "can.h"
+#include "tim.h"
 
 /*Allocate the stack for our PID task*/
 StackType_t DR16TaskStack[configMINIMAL_STACK_SIZE];
@@ -28,9 +29,11 @@ StaticTask_t CANArmTaskTCB;
 // StaticTask_t CANArmTaskTCB;
 
 static DR16::RcData uartSnapshot;
-const float PID[4][3] = {{1,0,0},{1,0,0},{1,0,0},{1,0,0}};
-static DJIMotor::MotorPair wheels = DJIMotor::MotorPair(1,4,PID);
-static DJIMotor::MotorPair arms = DJIMotor::MotorPair(5,2);
+const float MotorPID[4][3] = {{1,0,0},{1,0,0},{1,0,0},{1,0,0}};
+const float ArmPID[2][3] = {{1,0,0},{1,0,0}};
+
+static DJIMotor::MotorPair wheels = DJIMotor::MotorPair(1,4,MotorPID);
+static DJIMotor::MotorPair arms = DJIMotor::MotorPair(5,2,ArmPID);
 /**
  * @todo Show your control outcome of the M3508 motor as follows
  */
@@ -101,21 +104,6 @@ void CANTaskWheel(void *){
         
         DJIMotor::UART_ConvertMotor(uartSnapshot,wheels);
 
-        // while (HAL_CAN_GetRxFifoFillLevel(&hcan,CAN_RX_FIFO0)!=0){
-        //     HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan, CAN_RX_FIFO0, &RxHeader, RxData);
-        //     if (status == HAL_OK){
-        //         int index = RxHeader.StdId - 0x201;
-        //         if (index < 4){wheels[index].updateInfoFromCAN(RxData);}
-        //     }
-        // }
-        // if (!connected){wheels.errorHandler(&hcan,&txHeaderWheel,&FilterWheel);}
-        // wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
-        // vTaskDelay(1);
-        // HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan,CAN_RX_FIFO0,&RxHeader,RxData);
-        // if (status == HAL_OK){
-        //     int index = RxHeader.StdId - 0x201;
-        //     if (index<4) wheels[index].updateInfoFromCAN(RxData);
-        // }
         wheels.transmit(&hcan,&txHeaderWheel,&FilterWheel);
         vTaskDelay(1);
     }
@@ -131,22 +119,34 @@ void CANTaskArm(void *){
     arms.init(&hcan,&FilterArm);
     while (true){
         if (uartSnapshot.s2 == 2){
+
+            switch (uartSnapshot.s1){
+            case 2:
+                __HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_3,500);
+                break;
+            case 3:
+                __HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_3,100);
+            default:
+                break;
+            }
+
+
             DJIMotor::UART_ConvertArm(uartSnapshot,arms);
-            // CAN_RxHeaderTypeDef RxHeader;
-            // uint8_t RxData[8];
-            // HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan,CAN_RX_FIFO0,&RxHeader,RxData);
-            // if (status == HAL_OK){
-            //     switch(RxHeader.StdId){
-            //         case 0x205:
-            //             arms[0].updateInfoFromCAN(RxData);
-            //             break;
-            //         case 0x206:
-            //             arms[1].updateInfoFromCAN(RxData);
-            //             break;  
-            //         default:
-            //             break;     
-            //     } 
-            // }
+            CAN_RxHeaderTypeDef RxHeader;
+            uint8_t RxData[8];
+            HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan,CAN_RX_FIFO0,&RxHeader,RxData);
+            if (status == HAL_OK){
+                switch(RxHeader.StdId){
+                    case 0x205:
+                        arms[0].updateInfoFromCAN(RxData);
+                        break;
+                    case 0x206:
+                        arms[1].updateInfoFromCAN(RxData);
+                        break;  
+                    default:
+                        break;     
+                } 
+            }
         }
         arms.transmit(&hcan,&txHeaderArm,&FilterArm);
         vTaskDelay(1);
@@ -172,7 +172,8 @@ void startUserTasks()
     DR16::init();
     HAL_CAN_Start(&hcan);
     HAL_CAN_ActivateNotification(&hcan,CAN_IT_RX_FIFO0_MSG_PENDING);
-
+    HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
+    
     xTaskCreateStatic(DR16Communication,
                       "DR16_Communication ",
                       configMINIMAL_STACK_SIZE,

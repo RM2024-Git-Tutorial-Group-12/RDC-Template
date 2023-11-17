@@ -16,6 +16,7 @@
 /*Inlcude the main.h files, where you could access the huart1 handle*/
 #include "main.h"
 #include "stdint.h"
+#include "usart.h"
 
 typedef unsigned int HAL_Ticks;
 namespace DR16

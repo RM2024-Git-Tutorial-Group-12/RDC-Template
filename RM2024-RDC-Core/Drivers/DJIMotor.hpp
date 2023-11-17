@@ -112,7 +112,6 @@ namespace DJIMotor
             MotorPair(const int IDStart,const int s, const float pid[][3]);
 
             void transmit(CAN_HandleTypeDef*,CAN_TxHeaderTypeDef*,CAN_FilterTypeDef*);
-            void transmit_arm(CAN_HandleTypeDef*,CAN_TxHeaderTypeDef*,CAN_FilterTypeDef*);
 
             void errorHandler(CAN_HandleTypeDef*,CAN_TxHeaderTypeDef*,CAN_FilterTypeDef*);
 
