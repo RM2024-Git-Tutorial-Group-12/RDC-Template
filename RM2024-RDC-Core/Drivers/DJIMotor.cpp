@@ -280,12 +280,12 @@ void UART_ConvertArm(const DR16::RcData& RcData,MotorPair& pair){
     int status_axis1;
     int status_axis2;
 
-    if (axis1 > 1024) status_axis1 = DOWN;
-    else if (axis1 < 1024) status_axis1 = UP;
+    if (axis1 > 1189) status_axis1 = DOWN;
+    else if (axis1 < 859) status_axis1 = UP;
     else status_axis1 = REST;
 
-    if (axis2 > 1024) status_axis2 = UP;
-    else if (axis2 < 1024) status_axis2 = DOWN; 
+    if (axis2 > 1189) status_axis2 = UP;
+    else if (axis2 < 859) status_axis2 = DOWN; 
     else status_axis2 = REST;
     
     int motorCurrents[2] = {0};
