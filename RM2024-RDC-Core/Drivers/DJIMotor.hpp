@@ -24,13 +24,21 @@
 #include "stdint.h"
 #include "PID.hpp"
 #include "DR16.hpp"
+#include "PID.hpp"
+
+#define UP 1
+#define DOWN -1
+#define REST 0
+#define AXISSPEED1 3000
+#define AXISSPEED2 1500
+#define SPEEDLIMIT 3960
 
 namespace DJIMotor
 {
 
     #define TX_ID 0x200
     #define EX_TX_ID 0x1FF
-
+    typedef unsigned int ticks;
 /**
  * @brief A motor's handle. We do not require you to master the cpp class
  * syntax.
@@ -43,25 +51,47 @@ namespace DJIMotor
  * @brief This is what we really appreiciate in our programming
  */ 
 
+    enum class TYPE{
+        WHEEL,
+        ARM
+    };
+
     class DJIMotor
     {
         private:
             uint16_t canID;  // You need to assign motor's can ID for different motor
+            
+            // Below are the types of measurements 
+
             int convertedUART;
+            int realAngle;
 
-            int mechanicalAngle;
-            int rotationalSpeed;
-            int current;
-            int motorTemperature;
+            // Below are types of 
 
-            // control::PID motorPID; //uncomment the code once the PID has a proper constructor and then update DJIMotor accordingly
+            int16_t mechanicalAngle;
+            int16_t rotationalSpeed;
+            int16_t current;
+
+            Control::PID motorPID{1,0,0}; //uncomment the code once the PID has a proper constructor and then update DJIMotor accordingly
+            ticks lastUpdated;
+            TYPE motorType;
+
         public:
             DJIMotor(const int& ID);
+
             void updateInfoFromCAN(const uint8_t* rxBuffer);
-            void updateTargetCurrent(const int rx);
-            void getValues(int* container);
-            int getPIDCurrent();
-            int getCANID();
+            void updateTargetRPM(const int);
+            void setPID(const float*);
+
+            // void getValues(int* container);
+            int getPIDRPM();
+            int getPIDSpeed();
+            void setRealAngle(const int&);
+            void RealAngleInit(){realAngle=0;}
+            int getrotationalSpeed(){return rotationalSpeed;}
+            int getconvertedUART(){return convertedUART;}
+            int getrealAngle(){return realAngle;}
+            // int getCANID();
 
         /*======================================================*/
         /**
@@ -86,11 +116,17 @@ namespace DJIMotor
             int size;
         public:
             MotorPair(const int IDStart, const int s);
+            MotorPair(const int IDStart,const int s, const float pid[][3]);
+
             void transmit(CAN_HandleTypeDef*,CAN_TxHeaderTypeDef*,CAN_FilterTypeDef*);
-            void errorHandler();
+
+            void errorHandler(CAN_HandleTypeDef*,CAN_TxHeaderTypeDef*,CAN_FilterTypeDef*);
+
             DJIMotor& operator[](const int);
-            void init(CAN_HandleTypeDef* hcan,CAN_TxHeaderTypeDef* header,CAN_FilterTypeDef* filter);
-            void updateCurrents(const int*);
+            void init(CAN_HandleTypeDef* hcan,CAN_FilterTypeDef* filter);
+            
+            void updateTargetRPM(const int*);
+            int getsize(){return size;}
     };
 
     class motorMechanics{
@@ -103,20 +139,25 @@ namespace DJIMotor
 
         // motorMechanics(const int*);
         motorMechanics(const int, const int, const int, const int);
-
         void operator=(const motorMechanics&);
+        // void operator=(const int*);
 
-        motorMechanics operator+(const motorMechanics& values);
-        void operator=(const int*);
-        void normalise(const int max);
-        void cpyMotorVals(int*);
+        motorMechanics operator+(const motorMechanics& matrix);
+        motorMechanics operator*(const float multiple);
 
         void matrixRotateLeft(); 
         void matrixRotateRight();
+
+        void normalise();
+        void cpyMotorVals(int*);
+        void reduceCornerRotate();
+
     };
 
     int max(const int a, const int b);
-    void normalise(int*,const int);
+
+    int abs(const int& a);
+    int absmax(int,int,int,int);
 /**
  * @brief The whole motor's module initialization function
  * @note  You might initialize the CAN Module here
@@ -163,6 +204,7 @@ void setOutput(int16_t output);
  */
 void transmit(uint16_t header);
 extern void UART_ConvertMotor(const DR16::RcData&,MotorPair&);
+extern void UART_ConvertArm(const DR16::RcData&,MotorPair&);
 /*===========================================================*/
 /**
  * @brief You can define your customized function here
@@ -177,7 +219,7 @@ accumulated position(orientation) of the motor
  * ..... And more .....
  *
 ============================================================*/
-
+double sqrt(double);
 
 /*===========================================================*/
 }  // namespace DJIMotor

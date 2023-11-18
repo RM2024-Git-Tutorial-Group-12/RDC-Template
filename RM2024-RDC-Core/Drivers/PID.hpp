@@ -18,6 +18,11 @@
 namespace Control
 {
 
+    /*
+        - motor, we need to control the speed,
+        - arm, we would have to control the rotation.
+    */
+
 class PID
 {
    public:
@@ -59,6 +64,7 @@ class PID
 
     float error     = 0;  // The error in this update
     float lastError = 0;  // The error from last update
+    float accumalatedError = 0; // this is the overall error the wheel has from moving, allows for more refined controll of I error
 
     float pOut = 0;  // The P term output of the PID
     float iOut = 0;  // The I term output of the PID

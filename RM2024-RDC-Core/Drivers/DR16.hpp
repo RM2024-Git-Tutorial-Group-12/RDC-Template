@@ -16,6 +16,10 @@
 /*Inlcude the main.h files, where you could access the huart1 handle*/
 #include "main.h"
 #include "stdint.h"
+#include "usart.h"
+
+#define UART_MIN 364
+#define UART_MAX 1684
 
 typedef unsigned int HAL_Ticks;
 namespace DR16

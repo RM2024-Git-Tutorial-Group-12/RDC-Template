@@ -38,6 +38,8 @@ void errorHandler(){
     rcData.channel1 = 1024;
     rcData.channel2 = 1024;
     rcData.channel3 = 1024;
+    rcData.s1=1;
+    rcData.s2=1;
     // switch no normal state
 }
 
@@ -47,16 +49,16 @@ void decodeAndValidate(uint8_t rxBuffer[]){
 
     if(rxBuffer == NULL){return;}
     rcData.channel0 = ((uint16_t)rxBuffer[0] | ((uint16_t)rxBuffer[1] << 8)) & 0x07FF;
-    if (rcData.channel0 < 364 || rcData.channel0 > 1684){abnormal = true;}
+    if (rcData.channel0 < UART_MIN || rcData.channel0 > UART_MAX){abnormal = true;}
 
     rcData.channel1 = (((uint16_t)rxBuffer[1] >> 3) | ((uint16_t)rxBuffer[2] << 5))& 0x07FF;
-    if (rcData.channel1 < 364 || rcData.channel1 > 1684){abnormal = true;}
+    if (rcData.channel1 < UART_MIN || rcData.channel1 > UART_MAX){abnormal = true;}
 
     rcData.channel2 = (((uint16_t)rxBuffer[2] >> 6) | ((uint16_t)rxBuffer[3] << 2) | ((uint16_t)rxBuffer[4] << 10)) & 0x07FF;
-    if (rcData.channel2 < 364 || rcData.channel2 > 1684){abnormal = true;}
+    if (rcData.channel2 < UART_MIN || rcData.channel2 > UART_MAX){abnormal = true;}
 
     rcData.channel3 = (((uint16_t)rxBuffer[4] >> 1) | ((uint16_t)rxBuffer[5]<<7)) & 0x07FF;
-    if (rcData.channel3 < 364 || rcData.channel3 > 1684){abnormal = true;}
+    if (rcData.channel3 < UART_MIN || rcData.channel3 > UART_MAX){abnormal = true;}
 
     rcData.s1 = ((rxBuffer[5] >> 4) & 0x000C) >> 2;
     if(rcData.s1 < 1 || rcData.s1 > 3){abnormal = true;}
