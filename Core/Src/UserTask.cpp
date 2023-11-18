@@ -30,7 +30,7 @@ StaticTask_t CANArmTaskTCB;
 
 static DR16::RcData uartSnapshot;
 const float MotorPID[4][3] = {{1.3,0.1,0.3},{1.3,0.1,0.3},{1.3,0.1,0.3},{1.3,0.1,0.3}};
-const float ArmPID[2][3] = {{1.5,1.7,0},{1.5,1.7,0.5}};
+const float ArmPID[2][3] = {{0.75,2.5,0.5},{10,2.5,0.5}};
 
 static DJIMotor::MotorPair wheels = DJIMotor::MotorPair(1,4,MotorPID);
 static DJIMotor::MotorPair arms = DJIMotor::MotorPair(5,2,ArmPID);
@@ -119,36 +119,29 @@ void CANTaskArm(void *){
     arms.init(&hcan,&FilterArm);
 
     while (true){
+        
         if (uartSnapshot.s2 == 2){
+            float multiple;
 
             switch (uartSnapshot.s1){
-            case 2:
-                __HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_3,250);
-                break;
-            case 3:
+            case 2: // close
                 __HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_3,100);
+                multiple = 0.2;
+                break;
+            case 3: // open 
+                __HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_3,250);
+                multiple = 1;
             default:
                 break;
             }
 
 
-            DJIMotor::UART_ConvertArm(uartSnapshot,arms);
+            DJIMotor::UART_ConvertArm(uartSnapshot,arms,multiple);
         }
         arms.transmit(&hcan,&txHeaderArm,&FilterArm);
         vTaskDelay(1);
     }
 }
-
-// void CANTaskArmPID(void *){
-//     while (true){
-//         if (arms[0].getconvertedUART()==0){
-//             arms[0].setRealAngle(arms[0].getrotationalSpeed());
-//         }
-//         if (arms[1].getconvertedUART()==0){
-
-//         }
-//     }
-// }
 /**
  * @brief Intialize all the drivers and add task to the scheduler
  * @todo  Add your own task in this file

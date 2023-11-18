@@ -10,8 +10,8 @@
 
 namespace DJIMotor
 {
-    Control::PID axis1SpeedPID{2,0.4,0};
-    Control::PID axis2SpeedPID{2,0.4,0};
+    Control::PID axis1SpeedPID{2,0.7,0};
+    Control::PID axis2SpeedPID{2,0.7,0};
 /* The Declarations of DJIMotor Class*/
 
     DJIMotor::DJIMotor(const int& i){
@@ -273,7 +273,7 @@ void UART_ConvertMotor(const DR16::RcData& RCdata,MotorPair& pair){
     pair.updateTargetRPM(motorCurrents);
 }
 
-void UART_ConvertArm(const DR16::RcData& RcData,MotorPair& pair){
+void UART_ConvertArm(const DR16::RcData& RcData,MotorPair& pair, const float& multiple){
     const int axis1 = RcData.channel1;
     const int axis2 = RcData.channel3;
 
@@ -289,8 +289,24 @@ void UART_ConvertArm(const DR16::RcData& RcData,MotorPair& pair){
     else status_axis2 = REST;
     
     int motorCurrents[2] = {0};
+
+    if (status_axis1 == UP){
+        motorCurrents[0] = AXISSPEED1 * multiple * status_axis1;
+    }
+    else{
+        motorCurrents[0] = AXISSPEED1 / multiple * status_axis1;
+    }
+
+    if (status_axis2 == UP){
+        motorCurrents[1] = AXISSPEED2 * multiple * status_axis2;
+    }
+    else{
+        motorCurrents[1] = AXISSPEED2 / multiple * status_axis2;
+    }
+
     motorCurrents[0] = status_axis1 * AXISSPEED1;
     motorCurrents[1] = status_axis2 * AXISSPEED2;
+
     pair.updateTargetRPM(motorCurrents);
 
 }
