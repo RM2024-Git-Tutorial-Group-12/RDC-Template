@@ -204,7 +204,7 @@ void setOutput(int16_t output);
  */
 void transmit(uint16_t header);
 extern void UART_ConvertMotor(const DR16::RcData&,MotorPair&);
-extern void UART_ConvertArm(const DR16::RcData&,MotorPair&);
+extern void UART_ConvertArm(const DR16::RcData&,MotorPair&,const float&);
 /*===========================================================*/
 /**
  * @brief You can define your customized function here
