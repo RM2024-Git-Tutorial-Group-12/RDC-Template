@@ -30,7 +30,7 @@ StaticTask_t CANArmTaskTCB;
 
 static DR16::RcData uartSnapshot;
 const float MotorPID[4][3] = {{1.3,0.1,0.3},{1.3,0.1,0.3},{1.3,0.1,0.3},{1.3,0.1,0.3}};
-const float ArmPID[2][3] = {{1,0,0},{1,0.3,0.5}};
+const float ArmPID[2][3] = {{1.5,1.7,0},{1.5,1.7,0.5}};
 
 static DJIMotor::MotorPair wheels = DJIMotor::MotorPair(1,4,MotorPID);
 static DJIMotor::MotorPair arms = DJIMotor::MotorPair(5,2,ArmPID);
@@ -117,12 +117,13 @@ void CANTaskArm(void *){
                                         CAN_FILTER_FIFO0,0,CAN_FILTERMODE_IDMASK,CAN_FILTERSCALE_32BIT,
                                         CAN_FILTER_ENABLE,0};
     arms.init(&hcan,&FilterArm);
+
     while (true){
         if (uartSnapshot.s2 == 2){
 
             switch (uartSnapshot.s1){
             case 2:
-                __HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_3,500);
+                __HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_3,250);
                 break;
             case 3:
                 __HAL_TIM_SetCompare(&htim4,TIM_CHANNEL_3,100);
@@ -132,21 +133,6 @@ void CANTaskArm(void *){
 
 
             DJIMotor::UART_ConvertArm(uartSnapshot,arms);
-            CAN_RxHeaderTypeDef RxHeader;
-            uint8_t RxData[8];
-            HAL_StatusTypeDef status = HAL_CAN_GetRxMessage(&hcan,CAN_RX_FIFO0,&RxHeader,RxData);
-            if (status == HAL_OK){
-                switch(RxHeader.StdId){
-                    case 0x205:
-                        arms[0].updateInfoFromCAN(RxData);
-                        break;
-                    case 0x206:
-                        arms[1].updateInfoFromCAN(RxData);
-                        break;  
-                    default:
-                        break;     
-                } 
-            }
         }
         arms.transmit(&hcan,&txHeaderArm,&FilterArm);
         vTaskDelay(1);

@@ -73,7 +73,7 @@ namespace DJIMotor
             int16_t current;
 
             Control::PID motorPID{1,0,0}; //uncomment the code once the PID has a proper constructor and then update DJIMotor accordingly
-            ticks lastUpdated;
+            // ticks lastUpdated;
             TYPE motorType;
 
         public:

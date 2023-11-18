@@ -10,6 +10,8 @@
 
 namespace DJIMotor
 {
+    Control::PID axis1SpeedPID{2,0.4,0};
+    Control::PID axis2SpeedPID{2,0.4,0};
 /* The Declarations of DJIMotor Class*/
 
     DJIMotor::DJIMotor(const int& i){
@@ -18,7 +20,6 @@ namespace DJIMotor
         mechanicalAngle = 0;
         rotationalSpeed = 0;
         current = 0;
-        lastUpdated = 0;
         if (i >= 0 && i <= 3){
             motorType = TYPE::WHEEL;
         }
@@ -48,32 +49,36 @@ namespace DJIMotor
 
     */
     int DJIMotor::getPIDRPM(){
-        float newRPM;
+        int newRPM;
         
-        int newSpeed = convertedUART;
-        ticks currentTime = HAL_GetTick();
+        // ticks currentTime = HAL_GetTick();
 
-        if (convertedUART == 0 && motorType == TYPE::ARM) {
-            realAngle += rotationalSpeed*((currentTime-lastUpdated));
-            newSpeed = getPIDSpeed(); 
+        newRPM = motorPID.update(convertedUART,rotationalSpeed,1);
+
+        if (newRPM == 0 && motorType == TYPE::ARM) {
+            realAngle += rotationalSpeed;
+            newRPM = getPIDSpeed(); 
         }
         else {
             realAngle = 0;
         }
 
-        newRPM = motorPID.update(newSpeed,rotationalSpeed,(currentTime-lastUpdated));
-        lastUpdated = currentTime;
-
         return newRPM;
     }
-    
-
 
     int DJIMotor::getPIDSpeed(){
-        float newSpeed;
-        ticks currentTime = HAL_GetTick();
-        newSpeed = motorPID.update(0, realAngle,(currentTime-lastUpdated));
-        lastUpdated = currentTime;
+
+        int newSpeed;
+        switch (canID)
+        {
+        case 0x205:
+            newSpeed = axis1SpeedPID.update(0,realAngle,1);
+            break;
+        case 0x206:
+            newSpeed = axis2SpeedPID.update(0,realAngle,1);
+        default:
+            break;
+        }
 
         return newSpeed;
     }
@@ -275,12 +280,12 @@ void UART_ConvertArm(const DR16::RcData& RcData,MotorPair& pair){
     int status_axis1;
     int status_axis2;
 
-    if (axis1 > 1024) status_axis1 = UP;
-    else if (axis1 < 1024) status_axis1 = DOWN;
+    if (axis1 > 1189) status_axis1 = DOWN;
+    else if (axis1 < 859) status_axis1 = UP;
     else status_axis1 = REST;
 
-    if (axis2 > 1024) status_axis2 = UP;
-    else if (axis2 < 1024) status_axis2 = DOWN; 
+    if (axis2 > 1189) status_axis2 = UP;
+    else if (axis2 < 859) status_axis2 = DOWN; 
     else status_axis2 = REST;
     
     int motorCurrents[2] = {0};
